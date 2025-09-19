@@ -1,0 +1,21 @@
+
+# Core dependencies
+reportlab
+cryptography
+
+# GUI dependencies (included with Python)
+# tkinter (built-in)
+
+# Testing
+# unittest (built-in)
+
+# Development dependencies
+# logging (built-in)
+# json (built-in)
+# os (built-in)
+# sys (built-in)
+# subprocess (built-in)
+# threading (built-in)
+# hashlib (built-in)
+# uuid (built-in)
+# datetime (built-in)
