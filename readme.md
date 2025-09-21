@@ -1,6 +1,4 @@
 
-
-"""
 # Secure Data Wiper
 
 A NIST SP 800-88 compliant secure data wiping tool with tamper-proof certificate generation.
@@ -103,4 +101,3 @@ MIT License - See LICENSE file for details
 - Documentation: https://docs.securewiper.com
 - Issues: https://github.com/securewiper/secure-data-wiper/issues
 - Security: security@securewiper.com
-"""
