@@ -1,4 +1,8 @@
 
+# =============================================================================
+# core/certificate.py - Certificate Generation
+# =============================================================================
+
 import json
 import uuid
 import hashlib
@@ -177,7 +181,7 @@ class CertificateGenerator:
         except Exception as e:
             return False, f"Certificate verification failed: {e}"
     
-    def _format_bytes(self, bytes_size: float) -> str:
+    def _format_bytes(self, bytes_size: int) -> str:
         """Format bytes in human readable format"""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if bytes_size < 1024.0:

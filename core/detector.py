@@ -53,6 +53,21 @@ class DeviceDetector:
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
             self.logger.error(f"Failed to detect Linux devices: {e}")
         
+        # Add test files in /tmp for safe testing
+        import glob
+        test_files = glob.glob('/tmp/test_drive*.img')
+        for test_file in test_files:
+            if os.path.exists(test_file):
+                size = os.path.getsize(test_file)
+                devices.append({
+                    'path': test_file,
+                    'name': os.path.basename(test_file),
+                    'size': f"{size} bytes",
+                    'model': 'Test Image File',
+                    'mounted': False,
+                    'type': 'file'
+                })
+        
         return devices
     
     def _get_windows_devices(self) -> List[Dict[str, Any]]:

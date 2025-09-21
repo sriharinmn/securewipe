@@ -1,6 +1,9 @@
 
+# =============================================================================
+# gui/interface.py - GUI Interface
+# =============================================================================
+
 import tkinter as tk
-from tkinter import simpledialog
 from tkinter import ttk, messagebox, filedialog
 import threading
 import logging
@@ -32,7 +35,7 @@ class SecureWiperGUI:
         """Setup the user interface"""
         # Main container
         main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W + tk.E + tk.N + tk.S))
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
@@ -49,7 +52,7 @@ class SecureWiperGUI:
         self.device_var = tk.StringVar()
         self.device_combo = ttk.Combobox(main_frame, textvariable=self.device_var, 
                                        state="readonly", width=50)
-        self.device_combo.grid(row=1, column=1, sticky=(tk.W + tk.E), pady=5, padx=(5, 0))
+        self.device_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=5, padx=(5, 0))
         
         refresh_btn = ttk.Button(main_frame, text="Refresh", command=self.refresh_devices)
         refresh_btn.grid(row=1, column=2, pady=5, padx=(5, 0))
@@ -68,23 +71,23 @@ class SecureWiperGUI:
         
         # Device information
         info_frame = ttk.LabelFrame(main_frame, text="Device Information", padding="10")
-        info_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W + tk.E + tk.N + tk.S), pady=10)
+        info_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
         info_frame.columnconfigure(1, weight=1)
         
         self.info_text = tk.Text(info_frame, height=8, state=tk.DISABLED)
         info_scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.info_text.yview)
         self.info_text.configure(yscrollcommand=info_scrollbar.set)
         
-        self.info_text.grid(row=0, column=0, columnspan=2, sticky=(tk.W + tk.E + tk.N + tk.S))
-        info_scrollbar.grid(row=0, column=2, sticky=(tk.N + tk.S))
+        self.info_text.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        info_scrollbar.grid(row=0, column=2, sticky=(tk.N, tk.S))
         
         # Progress section
         progress_frame = ttk.LabelFrame(main_frame, text="Progress", padding="10")
-        progress_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W + tk.E), pady=10)
+        progress_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         progress_frame.columnconfigure(0, weight=1)
         
         self.progress = ttk.Progressbar(progress_frame, length=400, mode='determinate')
-        self.progress.grid(row=0, column=0, sticky=(tk.W + tk.E), pady=5)
+        self.progress.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
         
         self.progress_label = ttk.Label(progress_frame, text="Ready to start wiping")
         self.progress_label.grid(row=1, column=0, pady=5)
@@ -186,7 +189,7 @@ This action cannot be undone!
 
 Type 'WIPE' to confirm:"""
         
-        confirmation = simpledialog.askstring("Final Confirmation", confirm_msg)
+        confirmation = tk.simpledialog.askstring("Final Confirmation", confirm_msg)
         if confirmation != "WIPE":
             return
         
@@ -205,11 +208,6 @@ Type 'WIPE' to confirm:"""
             def progress_callback(percent, message):
                 self.root.after(0, lambda: self._update_progress(percent, message))
             
-            if not self.selected_device:
-                messagebox.showerror("Error", "No device selected. Please choose a device first.")
-                return  # Exit early, don't try to wipe anything
-
-
             device_path = self.selected_device['path']
             method = self.method_var.get()
             
@@ -285,9 +283,8 @@ Keep these certificates as proof of secure data destruction."""
         """Run the GUI application"""
         try:
             # Add missing import for simpledialog
-            from tkinter import simpledialog
-
-            
+            import tkinter.simpledialog
+            tk.simpledialog = tkinter.simpledialog
             
             self.root.mainloop()
         except Exception as e:

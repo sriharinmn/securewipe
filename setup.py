@@ -1,3 +1,6 @@
+# =============================================================================
+# setup.py - Installation Script
+# =============================================================================
 
 from setuptools import setup, find_packages
 
@@ -27,8 +30,8 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "reportlab>=4.0.4",
-        "cryptography>=41.0.7",
+        "reportlab",
+        "cryptography",
     ],
     entry_points={
         "console_scripts": [
