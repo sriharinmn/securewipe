@@ -1,0 +1,2 @@
+2025-09-26 03:39:31,904 - gui.interface - ERROR - Failed to refresh devices: 'DeviceDetector' object has no attribute '_get_windows_devices'
+2025-09-26 03:39:44,408 - gui.interface - ERROR - Failed to refresh devices: 'DeviceDetector' object has no attribute '_get_windows_devices'

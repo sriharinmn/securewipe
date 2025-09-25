@@ -31,8 +31,23 @@ def main():
     parser.add_argument('--device', help='Target device path')
     parser.add_argument('--method', default='dod', choices=['dod', 'nist'], 
                        help='Wiping method')
+    parser.add_argument('--create-test-drive', action='store_true',
+                       help='Create a test drive using loop device')
+    parser.add_argument('--test-drive-size', type=int, default=100,
+                       help='Size of test drive in MB (default: 100)')
     
     args = parser.parse_args()
+    
+    if args.create_test_drive:
+        try:
+            from utils.testutils import create_test_drive
+            device_path = create_test_drive(args.test_drive_size)
+            logger.info(f"Created test drive at {device_path}")
+            if args.cli:
+                args.device = device_path
+        except Exception as e:
+            logger.error(f"Failed to create test drive: {e}")
+            sys.exit(1)
     
     if args.cli:
         # CLI Mode

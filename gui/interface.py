@@ -159,25 +159,77 @@ class SecureWiperGUI:
         self.quit_btn = ttk.Button(button_frame, text="Exit", command=self.root.quit)
         self.quit_btn.pack(side=tk.LEFT, padx=5)
         
+        self.hpa_dco_btn = ttk.Button(button_frame, text="Show HPA/DCO Info", command=self.print_hpa_dco_summary)
+        self.hpa_dco_btn.pack(side=tk.LEFT, padx=5)
+        
         # Bind events
         self.device_combo.bind('<<ComboboxSelected>>', self.on_device_selected)
     
     def refresh_devices(self):
-        """Refresh the list of available devices with SSD detection"""
+        """Refresh the list of available devices with SSD, HPA, DCO, and hidden partition detection"""
         try:
             devices = self.detector.get_all_devices()
             device_list = []
             self.device_data = {}
-            
+
             for device in devices:
-                # Enhanced display name with SSD/HDD indicator
+                # Detect HPA, DCO, hidden partitions
+                has_hpa, native_max, current_max = self.detector.detect_hpa(device['path'])
+                has_dco, dco_info = self.detector.detect_dco(device['path'])
+                hidden_partitions = self.detector.detect_hidden_partitions(device['path'])
+
+                device['has_hpa'] = has_hpa
+                device['native_max'] = native_max
+                device['current_max'] = current_max
+                device['has_dco'] = has_dco
+                device['dco_info'] = dco_info
+                device['hidden_partitions'] = hidden_partitions
+
+                # Normal device display
                 device_type = "SSD" if device.get('is_ssd', False) else "HDD"
                 nvme_indicator = " (NVMe)" if device.get('is_nvme', False) else ""
-                
                 display_name = f"{device['name']} - {device['model']} ({device['size']}) [{device_type}{nvme_indicator}]"
                 device_list.append(display_name)
                 self.device_data[display_name] = device
-            
+
+                # Add HPA entry if detected
+                if has_hpa:
+                    hpa_name = f"HPA on {device['name']}"
+                    device_list.append(hpa_name)
+                    self.device_data[hpa_name] = {
+                        'type': 'HPA',
+                        'native_max': native_max,
+                        'current_max': current_max,
+                        'path': device['path'],
+                        'is_ssd': device.get('is_ssd', False),
+                        'is_nvme': device.get('is_nvme', False)
+                    }
+
+                # Add DCO entry if detected
+                if has_dco:
+                    dco_name = f"DCO on {device['name']}"
+                    device_list.append(dco_name)
+                    self.device_data[dco_name] = {
+                        'type': 'DCO',
+                        'info': dco_info,
+                        'path': device['path'],
+                        'is_ssd': device.get('is_ssd', False),
+                        'is_nvme': device.get('is_nvme', False)
+                    }
+
+                # Add hidden partitions
+                for idx, part in enumerate(hidden_partitions):
+                    part_name = f"Hidden Partition {idx+1} on {device['name']}"
+                    device_list.append(part_name)
+                    self.device_data[part_name] = {
+                        'type': 'Hidden Partition',
+                        'offset': part['offset'],
+                        'size': part['size'],
+                        'path': device['path'],
+                        'is_ssd': device.get('is_ssd', False),
+                        'is_nvme': device.get('is_nvme', False)
+                    }
+
             self.device_combo['values'] = device_list
             if device_list:
                 self.device_combo.current(0)
@@ -187,44 +239,88 @@ class SecureWiperGUI:
                 self.info_text.delete(1.0, tk.END)
                 self.info_text.insert(1.0, "No devices found. Try creating test files or running as administrator.")
                 self.info_text.config(state=tk.DISABLED)
-        
+
         except Exception as e:
             self.logger.error(f"Failed to refresh devices: {e}")
             messagebox.showerror("Error", f"Failed to detect devices: {e}")
-    
+
     def on_device_selected(self, event):
-        """Handle device selection with enhanced SSD information"""
+        """Handle device selection with enhanced SSD, HPA, DCO, and hidden partition info"""
         selected = self.device_var.get()
         if selected in self.device_data:
             device = self.device_data[selected]
             self.selected_device = device
-            
+
+            type_ = device.get('type', 'Device')
             is_ssd = device.get('is_ssd', False)
             is_nvme = device.get('is_nvme', False)
-            
+
             # Update device type indicator
-            if is_ssd:
-                device_type_text = f"{'NVMe SSD' if is_nvme else 'SATA SSD'} - Optimized methods available"
-                self.device_type_label.config(text=device_type_text, style="SSD.TLabel")
+            if type_ == 'Device':
+                if is_ssd:
+                    device_type_text = f"{'NVMe SSD' if is_nvme else 'SATA SSD'} - Optimized methods available"
+                    self.device_type_label.config(text=device_type_text, style="SSD.TLabel")
+                else:
+                    self.device_type_label.config(text="HDD - Traditional overwrite methods", style="HDD.TLabel")
             else:
-                self.device_type_label.config(text="HDD - Traditional overwrite methods", style="HDD.TLabel")
-            
-            # Enable/disable method options based on device type
-            self.update_method_options(device)
-            
-            # Update device info display with enhanced SSD details
-            self.update_device_info(device)
-            
+                # HPA/DCO/Hidden Partition indicator
+                self.device_type_label.config(text=f"{type_} detected on device", style="Warning.TLabel")
+
+            # Enable/disable method options based on device type (only for normal devices)
+            if type_ == 'Device':
+                self.update_method_options(device)
+            else:
+                # Disable SSD-specific methods for HPA/DCO/Hidden partitions
+                for radio in [self.crypto_radio, self.secure_radio]:
+                    radio.config(state=tk.DISABLED)
+                self.method_var.set('nist')
+
+            # Update device info display
+            info_text = ""
+            if type_ == 'HPA':
+                info_text = f"""Host Protected Area (HPA) Detected
+    Device Path: {device['path']}
+    Native Max Address: {device.get('native_max')}
+    Current Max Address: {device.get('current_max')}"""
+            elif type_ == 'DCO':
+                info_text = f"""Device Configuration Overlay (DCO) Detected
+    Device Path: {device['path']}
+    DCO Info: {device.get('dco_info')}"""
+            elif type_ == 'Hidden Partition':
+                info_text = f"""Hidden Partition Detected
+    Device Path: {device['path']}
+    Offset: {device.get('offset')}
+    Size: {device.get('size')}"""
+            else:
+                # Normal device display
+                info_text = f"""DEVICE INFORMATION:
+    Device Path: {device['path']}
+    Device Name: {device['name']}
+    Model: {device['model']}
+    Size: {device['size']}
+    Type: {'SSD' if is_ssd else 'HDD'}
+    Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}"""
+
+            self.info_text.config(state=tk.NORMAL)
+            self.info_text.delete(1.0, tk.END)
+            self.info_text.insert(1.0, info_text)
+            self.info_text.config(state=tk.DISABLED)
+
             # Update method description
             self.update_method_description()
-            
-            # Check if device is safe to wipe
-            safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
-            if not safe:
-                self.wipe_btn.config(state=tk.DISABLED)
-                messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
+
+            # Check if device is safe to wipe (skip for HPA/DCO/hidden partitions if needed)
+            if type_ == 'Device':
+                safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
+                if not safe:
+                    self.wipe_btn.config(state=tk.DISABLED)
+                    messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
+                else:
+                    self.wipe_btn.config(state=tk.NORMAL)
             else:
+                # Allow wipe for HPA/DCO/hidden partitions but disable method selection
                 self.wipe_btn.config(state=tk.NORMAL)
+
     
     def update_method_options(self, device):
         """Enable/disable method options based on device capabilities"""
@@ -246,7 +342,6 @@ class SecureWiperGUI:
                 self.method_var.set('nist')
     
     def update_device_info(self, device):
-        """Update device information display with SSD capabilities"""
         self.info_text.config(state=tk.NORMAL)
         self.info_text.delete(1.0, tk.END)
         
@@ -254,73 +349,85 @@ class SecureWiperGUI:
         is_nvme = device.get('is_nvme', False)
         
         info_text = f"""DEVICE INFORMATION:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Device Path: {device['path']}
-Device Name: {device['name']}
-Model: {device['model']}
-Size: {device['size']}
-Type: {device.get('type', 'Unknown')}
-Mounted: {'Yes' if device.get('mounted', False) else 'No'}
+    Device Path: {device['path']}
+    Device Name: {device['name']}
+    Model: {device['model']}
+    Size: {device['size']}
+    Type: {device.get('type', 'Unknown')}
+    Mounted: {'Yes' if device.get('mounted', False) else 'No'}
 
-STORAGE TECHNOLOGY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    STORAGE TECHNOLOGY:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Storage Type: {'SSD (Solid State Drive)' if is_ssd else 'HDD (Hard Disk Drive)'}
-Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}
+    Storage Type: {'SSD (Solid State Drive)' if is_ssd else 'HDD (Hard Disk Drive)'}
+    Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}
 
-SSD CAPABILITIES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
+    SSD CAPABILITIES:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    """
 
         if is_ssd:
             info_text += f"""
-Cryptographic Erasure Support: {'✓ Yes' if device.get('supports_crypto_erase', False) else '✗ No'}
-Secure Erase Support: {'✓ Yes' if device.get('supports_secure_erase', False) else '✗ No'}
-Recommended Method: {device.get('recommended_method', 'nist').upper()}
+    Cryptographic Erasure Support: {'✓ Yes' if device.get('supports_crypto_erase', False) else '✗ No'}
+    Secure Erase Support: {'✓ Yes' if device.get('supports_secure_erase', False) else '✗ No'}
+    Recommended Method: {device.get('recommended_method', 'nist').upper()}
 
-WHY SSD METHODS ARE BETTER:
-• Cryptographic Erasure: Instantly destroys encryption keys, making data unrecoverable
-• Secure Erase: Hardware-level erasure including spare blocks and wear-leveled areas
-• Traditional overwrite methods may not reach all NAND cells due to wear leveling
-"""
+    WHY SSD METHODS ARE BETTER:
+    • Cryptographic Erasure: Instantly destroys encryption keys, making data unrecoverable
+    • Secure Erase: Hardware-level erasure including spare blocks and wear-leveled areas
+    • Traditional overwrite methods may not reach all NAND cells due to wear leveling
+    """
         else:
             info_text += """
-This is a traditional hard disk drive (HDD).
-• Uses magnetic storage technology
-• Data is stored on spinning platters
-• Overwrite methods are effective for complete data destruction
-• Recommended methods: NIST SP 800-88 or DoD 5220.22-M
-"""
+    This is a traditional hard disk drive (HDD).
+    • Uses magnetic storage technology
+    • Data is stored on spinning platters
+    • Overwrite methods are effective for complete data destruction
+    • Recommended methods: NIST SP 800-88 or DoD 5220.22-M
+    """
+
+        hpa_info = device.get('hpa', [])
+        dco_info = device.get('dco', [])
+        hidden_partitions = device.get('hidden_partitions', [])
+
+        info_text += f"""
+    HPA / DCO / HIDDEN PARTITIONS:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    HPA Areas: {len(hpa_info)} {'(Offsets: ' + ', '.join(str(h['start']) for h in hpa_info) + ')' if hpa_info else ''}
+    DCO Entries: {len(dco_info)} {'(Details: ' + ', '.join(str(d) for d in dco_info) + ')' if dco_info else ''}
+    Hidden Partitions: {len(hidden_partitions)} {'(Offsets: ' + ', '.join(str(p['offset']) for p in hidden_partitions) + ')' if hidden_partitions else ''}
+    """
 
         info_text += f"""
 
-SELECTED WIPING METHOD:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    SELECTED WIPING METHOD:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Current Selection: {self.method_var.get().upper()}
+    Current Selection: {self.method_var.get().upper()}
 
-⚠️  IMPORTANT WARNINGS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ⚠️  IMPORTANT WARNINGS:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔴 This operation will PERMANENTLY DESTROY all data on the selected device
-🔴 Data recovery will be impossible after the wipe process completes
-🔴 Ensure you have backups of any important data before proceeding
-🔴 Verify you have selected the correct device - mistakes cannot be undone
-🔴 The process may take several hours depending on device size and method
+    🔴 This operation will PERMANENTLY DESTROY all data on the selected device
+    🔴 Data recovery will be impossible after the wipe process completes
+    🔴 Ensure you have backups of any important data before proceeding
+    🔴 Verify you have selected the correct device - mistakes cannot be undone
+    🔴 The process may take several hours depending on device size and method
 
-COMPLIANCE STANDARDS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    COMPLIANCE STANDARDS:
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-• NIST SP 800-88 Rev. 1: Guidelines for Media Sanitization
-• DoD 5220.22-M: Department of Defense standard
-• Common Criteria Protection Profiles
-• Federal Information Processing Standards (FIPS)
-"""
-        
+    • NIST SP 800-88 Rev. 1: Guidelines for Media Sanitization
+    • DoD 5220.22-M: Department of Defense standard
+    • Common Criteria Protection Profiles
+    • Federal Information Processing Standards (FIPS)
+    """
+
         self.info_text.insert(1.0, info_text)
         self.info_text.config(state=tk.DISABLED)
-    
+
     def update_method_description(self):
         """Update method description based on selected method and device"""
         if not self.selected_device:
@@ -429,11 +536,20 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
     def _perform_wipe(self, method):
         """Perform the actual wipe operation"""
         try:
-            def progress_callback(percent, message):
+            # Defensive checks for device selection
+            if not isinstance(self.selected_device, dict):
+                self.logger.error(f"selected_device is not a dict: {self.selected_device}")
+                raise ValueError("No valid device selected")
+            device_path = self.selected_device.get('path')
+            if not device_path:
+                self.logger.error(f"selected_device missing 'path': {self.selected_device}")
+                raise ValueError("Invalid device: no path specified")
+            self.logger.info(f"Wipe started for device: {self.selected_device}")
+            # Setup progress callback
+            def progress_callback(percent, message=""):
                 self.root.after(0, lambda: self._update_progress(percent, message))
             
-            device_path = self.selected_device['path']
-            
+            # Perform the wipe operation
             cert_id = self.wiper.wipe_device(
                 device_path=device_path, 
                 method=method, 
@@ -441,12 +557,13 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
                 progress_callback=progress_callback
             )
             
-            # Success
+            # Handle success
             self.root.after(0, lambda: self._wipe_complete(cert_id, method))
         
         except Exception as e:
-            self.logger.error(f"Wipe failed: {e}")
-            self.root.after(0, lambda: self._wipe_failed(str(e)))
+            error_message = str(e)
+            self.logger.error(f"Wipe failed: {error_message}")
+            self.root.after(0, lambda: self._wipe_failed(error_message))
     
     def _update_progress(self, percent, message):
         """Update progress bar and message"""
@@ -492,6 +609,15 @@ Keep these certificates as legal proof of secure data destruction."""
     def _wipe_failed(self, error_msg):
         """Handle wipe failure"""
         self.progress['value'] = 0
+        self.progress_label.config(text="❌ Wipe failed!")
+        
+        # Re-enable UI
+        self._enable_ui()
+        
+        # Show error message
+        messagebox.showerror("Wipe Failed", 
+                          f"The secure wipe operation failed:\n\n{error_msg}\n\n"
+                          "Please check the logs for more details.")
         self.progress_label.config(text="❌ Wipe operation failed!")
         
         # Re-enable UI
@@ -580,3 +706,26 @@ Keep these certificates as legal proof of secure data destruction."""
         except Exception as e:
             self.logger.error(f"GUI error: {e}")
             messagebox.showerror("Application Error", f"Application error: {e}")
+
+    def print_hpa_dco_summary(self):
+        """Print the number and paths of detected HPA and DCO areas"""
+        hpa_count = 0
+        dco_count = 0
+        hpa_paths = []
+        dco_paths = []
+        devices = self.detector.get_all_devices()
+        for device in devices:
+            has_hpa, native_max, current_max = self.detector.detect_hpa(device['path'])
+            has_dco, dco_info = self.detector.detect_dco(device['path'])
+            if has_hpa:
+                hpa_count += 1
+                hpa_paths.append(device['path'])
+            if has_dco:
+                dco_count += 1
+                dco_paths.append(device['path'])
+        print(f"HPA areas detected: {hpa_count}")
+        for path in hpa_paths:
+            print(f"  HPA path: {path}")
+        print(f"DCO areas detected: {dco_count}")
+        for path in dco_paths:
+            print(f"  DCO path: {path}")

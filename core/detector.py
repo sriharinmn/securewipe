@@ -8,13 +8,16 @@ import subprocess
 import json
 import logging
 import glob
-from typing import List, Dict, Any
+import struct
+from typing import List, Dict, Any, Optional, Tuple
+from .ata_commands import ATACommand
 
 class DeviceDetector:
     """Detect and analyze storage devices"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.ata_command = ATACommand()
     
     def get_all_devices(self) -> List[Dict[str, Any]]:
         """Get list of all storage devices"""
@@ -35,12 +38,12 @@ class DeviceDetector:
         
         try:
             # Use lsblk to get block devices
-            result = subprocess.run(['lsblk', '-J', '-o', 'NAME,SIZE,TYPE,MOUNTPOINT,MODEL,HOTPLUG,RM'], 
+            result = subprocess.run(['lsblk', '-J', '-o', 'NAME,SIZE,TYPE,MOUNTPOINT,MODEL,HOTPLUG,RM,MAJ:MIN'], 
                                   capture_output=True, text=True, check=True)
             data = json.loads(result.stdout)
             
             for device in data.get('blockdevices', []):
-                if device.get('type') == 'disk':
+                if device.get('type') == 'disk' or (device.get('name', '').startswith('loop') and 'test_drive' in device.get('name', '')):
                     devices.append({
                         'path': f"/dev/{device['name']}",
                         'name': device['name'],
@@ -73,8 +76,201 @@ class DeviceDetector:
         
         return devices
     
-    def _get_windows_devices(self) -> List[Dict[str, Any]]:
-        """Get Windows storage devices - ALL devices including external"""
+    def detect_hidden_partitions(self, device_path: str) -> List[Dict[str, Any]]:
+        """
+        Detect hidden partitions on the device using advanced analysis techniques
+        
+        Args:
+            device_path: Path to the device to check
+            
+        Returns:
+            List of dictionaries containing information about hidden partitions
+        """
+        hidden_partitions = []
+        
+        try:
+            if sys.platform.startswith('win'):
+                hidden_partitions.extend(self._detect_windows_hidden_partitions(device_path))
+            else:
+                hidden_partitions.extend(self._detect_linux_hidden_partitions(device_path))
+                
+        except Exception as e:
+            self.logger.error(f"Error detecting hidden partitions: {e}")
+            
+        return hidden_partitions
+        
+    def _detect_windows_hidden_partitions(self, device_path: str) -> List[Dict[str, Any]]:
+        """Detect hidden partitions on Windows systems"""
+        hidden_partitions = []
+        
+        try:
+            # Use diskpart to get detailed partition information
+            ps_script = """
+            $disk = Get-Disk -Path $args[0]
+            $partitions = $disk | Get-Partition | Where-Object { 
+                $_.IsHidden -eq $true -or 
+                $_.Type -eq 'Recovery' -or
+                $_.Type -eq 'Reserved' -or
+                $_.Type -eq 'System'
+            }
+            $partitions | ForEach-Object {
+                [PSCustomObject]@{
+                    Offset = $_.Offset
+                    Size = $_.Size
+                    Type = $_.Type
+                    Hidden = $_.IsHidden
+                    GptType = $_.GptType
+                } | ConvertTo-Json
+            }
+            """
+            
+            result = subprocess.run(
+                ['powershell', '-Command', ps_script, device_path],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0 and result.stdout.strip():
+                try:
+                    partitions = json.loads(f"[{result.stdout.strip()}]")
+                    for partition in partitions:
+                        hidden_partitions.append({
+                            'offset': partition.get('Offset'),
+                            'size': partition.get('Size'),
+                            'type': partition.get('Type'),
+                            'is_hidden': partition.get('Hidden', True),
+                            'gpt_type': partition.get('GptType')
+                        })
+                except json.JSONDecodeError:
+                    pass
+                    
+        except Exception as e:
+            self.logger.error(f"Error detecting Windows hidden partitions: {e}")
+            
+        return hidden_partitions
+        
+    def _detect_linux_hidden_partitions(self, device_path: str) -> List[Dict[str, Any]]:
+        """Detect hidden partitions on Linux systems"""
+        hidden_partitions = []
+        
+        try:
+            # Use fdisk to get partition information
+            result = subprocess.run(
+                ['fdisk', '-l', device_path],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                # Parse fdisk output to find hidden partitions
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'Hidden' in line or 'Microsoft reserved' in line or 'EFI System' in line:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            hidden_partitions.append({
+                                'device': parts[0],
+                                'start': parts[1],
+                                'end': parts[2],
+                                'size': parts[3],
+                                'type': ' '.join(parts[4:])
+                            })
+                            
+        except Exception as e:
+            self.logger.error(f"Error detecting Linux hidden partitions: {e}")
+            
+        return hidden_partitions
+        
+    def detect_dco(self, device_path: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Detect Device Configuration Overlay (DCO) on the device
+        
+        Args:
+            device_path: Path to the device to check
+            
+        Returns:
+            Tuple containing:
+            - bool: True if DCO is present and active
+            - dict or None: DCO configuration if available
+        """
+        try:
+            # Read DCO identify data
+            dco_data = self.ata_command.execute_ata_command(
+                device_path,
+                ATACommand.READ_DCO
+            )
+            
+            if not dco_data:
+                return False, None
+                
+            # Parse DCO data
+            dco_info = {
+                'max_sectors': struct.unpack("<Q", dco_data[0:8])[0],
+                'features_enabled': struct.unpack("<H", dco_data[8:10])[0],
+                'transfer_modes': struct.unpack("<H", dco_data[10:12])[0]
+            }
+            
+            # Check if DCO is active by comparing with current geometry
+            identify_data = self.ata_command.execute_ata_command(
+                device_path,
+                ATACommand.IDENTIFY_DEVICE
+            )
+            
+            if not identify_data:
+                return False, None
+                
+            current_sectors = struct.unpack("<Q", identify_data[200:208])[0]
+            
+            has_dco = current_sectors < dco_info['max_sectors']
+            
+            return has_dco, dco_info if has_dco else None
+            
+        except Exception as e:
+            self.logger.error(f"Error detecting DCO: {e}")
+            return False, None
+            
+    def detect_hpa(self, device_path: str) -> Tuple[bool, Optional[int], Optional[int]]:
+        """
+        Detect Host Protected Area (HPA) on the device
+        
+        Args:
+            device_path: Path to the device to check
+            
+        Returns:
+            Tuple containing:
+            - bool: True if HPA is present
+            - int or None: Native max address if available
+            - int or None: Current max address if available
+        """
+        try:
+            # Get native max address
+            native_max = self.ata_command.execute_ata_command(
+                device_path,
+                ATACommand.READ_NATIVE_MAX_ADDRESS
+            )
+            
+            if not native_max:
+                return False, None, None
+                
+            # Get current max address through IDENTIFY DEVICE command
+            identify_data = self.ata_command.execute_ata_command(
+                device_path,
+                ATACommand.IDENTIFY_DEVICE
+            )
+            
+            if not identify_data:
+                return False, None, None
+                
+            native_max_sectors = struct.unpack("<Q", native_max[0:8])[0]
+            current_max_sectors = struct.unpack("<Q", identify_data[200:208])[0]
+            
+            has_hpa = native_max_sectors > current_max_sectors
+            
+            return has_hpa, native_max_sectors, current_max_sectors
+            
+        except Exception as e:
+            self.logger.error(f"Error detecting HPA: {e}")
+            return False, None, None
         devices = []
         
         try:
