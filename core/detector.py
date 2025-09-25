@@ -9,14 +9,12 @@ import json
 import logging
 import glob
 from typing import List, Dict, Any
-from utils.safety import SafetyChecker
 
 class DeviceDetector:
     """Detect and analyze storage devices"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.safety_checker = SafetyChecker()
     
     def get_all_devices(self) -> List[Dict[str, Any]]:
         """Get list of all storage devices"""
@@ -28,19 +26,6 @@ class DeviceDetector:
             devices = self._get_windows_devices()
         else:
             self.logger.warning(f"Unsupported platform: {sys.platform}")
-        
-        # Add critical safety information to all devices
-        for device in devices:
-            # Add safety warnings and checks
-            device['safety_warnings'] = self.safety_checker.get_safety_warnings(device['path'])
-            is_safe, safety_reason = self.safety_checker.is_device_safe_to_wipe(device['path'])
-            device['is_safe_to_wipe'] = is_safe
-            device['safety_reason'] = safety_reason
-            
-            # Mark unsafe devices clearly
-            if not is_safe:
-                device['name'] = f"🚫 {device['name']} (UNSAFE)"
-                device['model'] = f"⚠️  {device['model']} - {safety_reason}"
         
         return devices
     
