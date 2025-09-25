@@ -34,7 +34,8 @@ class DataWiper:
         self.block_size = 64 * 1024  # 64KB blocks for performance
         
     def wipe_device(self, device_path: str, method: str = 'nist', 
-                   progress_callback: Optional[Callable] = None) -> str:
+               progress_callback: Optional[Callable] = None,
+               device_info: dict = None) -> str:
         """
         Wipe device using specified method
         Returns: Certificate ID for the wipe operation
