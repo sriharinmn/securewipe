@@ -446,7 +446,8 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
         
         except Exception as e:
             self.logger.error(f"Wipe failed: {e}")
-            self.root.after(0, lambda: self._wipe_failed(str(e)))
+            error_msg = str(e)  # Capture the error message in a local variable
+            self.root.after(0, lambda: self._wipe_failed(error_msg))
     
     def _update_progress(self, percent, message):
         """Update progress bar and message"""
