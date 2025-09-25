@@ -8,11 +8,12 @@ import random
 import hashlib
 import time
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple
 from datetime import datetime
+from utils.device_manager import DeviceManager
 
 class DataWiper:
-    """Core data wiping engine with NIST SP 800-88 compliance"""
+    """Core data wiping engine with NIST SP 800-88 compliance and automatic unmounting"""
     
     # NIST SP 800-88 Rev. 1 compliant patterns
     NIST_PATTERNS = [
@@ -32,19 +33,33 @@ class DataWiper:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.block_size = 64 * 1024  # 64KB blocks for performance
+        self.device_manager = DeviceManager()
         
     def wipe_device(self, device_path: str, method: str = 'nist', 
                progress_callback: Optional[Callable] = None,
-               device_info: dict = None) -> str:
+               device_info: dict = None, auto_unmount: bool = True) -> str:
         """
-        Wipe device using specified method
+        Wipe device using specified method with automatic unmounting
+        
+        Args:
+            device_path: Path to the device to wipe
+            method: Wiping method ('nist', 'dod', etc.)
+            progress_callback: Optional callback for progress updates
+            device_info: Optional device information
+            auto_unmount: If True, automatically unmount device before wiping
+            
         Returns: Certificate ID for the wipe operation
         """
         start_time = datetime.now()
+        unmount_info = None
         
         # Validate device
         if not os.path.exists(device_path):
             raise ValueError(f"Device {device_path} does not exist")
+        
+        # Handle automatic unmounting
+        if auto_unmount and not ('test_drive' in os.path.basename(device_path)):
+            unmount_info = self._handle_device_unmounting(device_path, progress_callback)
         
         # Get device size
         device_size = self._get_device_size(device_path)
@@ -82,6 +97,19 @@ class DataWiper:
         
         except Exception as e:
             self.logger.error(f"Wipe operation failed: {e}")
+            
+            # If we unmounted the device and wipe failed, attempt to remount
+            if unmount_info and unmount_info.get('unmounted_partitions'):
+                self.logger.info("Wipe failed, attempting to remount device...")
+                try:
+                    success, message = self.device_manager.remount_device(device_path)
+                    if success:
+                        self.logger.info(f"Device remounted successfully: {message}")
+                    else:
+                        self.logger.error(f"Failed to remount device: {message}")
+                except Exception as remount_error:
+                    self.logger.error(f"Error during remount attempt: {remount_error}")
+            
             raise
         
         end_time = datetime.now()
@@ -167,3 +195,63 @@ class DataWiper:
                 progress_callback(overall_progress, f"Pass {pass_num}/{total_passes}: Writing random data")
         
         return hasher.hexdigest()
+    
+    def _handle_device_unmounting(self, device_path: str, progress_callback: Optional[Callable] = None) -> dict:
+        """
+        Handle automatic unmounting of the device before wiping
+        
+        Args:
+            device_path: Path to the device
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            Dictionary with unmounting information
+        """
+        unmount_info = {
+            'was_mounted': False,
+            'unmounted_partitions': [],
+            'unmount_successful': False,
+            'unmount_message': ''
+        }
+        
+        try:
+            # Check if device is mounted
+            mounted_partitions = self.device_manager.get_mounted_partitions(device_path)
+            
+            if not mounted_partitions:
+                unmount_info['unmount_message'] = "Device has no mounted partitions"
+                unmount_info['unmount_successful'] = True
+                return unmount_info
+            
+            unmount_info['was_mounted'] = True
+            
+            # Update progress
+            if progress_callback:
+                progress_callback(0, f"Unmounting {len(mounted_partitions)} partitions...")
+            
+            self.logger.info(f"Found {len(mounted_partitions)} mounted partitions, attempting unmount...")
+            
+            # Check for critical partitions
+            if self.device_manager._has_critical_partitions(mounted_partitions):
+                raise ValueError("Device contains system critical partitions and cannot be safely unmounted")
+            
+            # Attempt unmounting
+            success, message, unmounted_partitions = self.device_manager.unmount_device(device_path, force=False)
+            
+            unmount_info['unmounted_partitions'] = unmounted_partitions
+            unmount_info['unmount_successful'] = success
+            unmount_info['unmount_message'] = message
+            
+            if success:
+                self.logger.info(f"Successfully unmounted {len(unmounted_partitions)} partitions")
+                if progress_callback:
+                    progress_callback(5, f"Successfully unmounted {len(unmounted_partitions)} partitions")
+            else:
+                self.logger.error(f"Failed to unmount device: {message}")
+                raise ValueError(f"Cannot unmount device: {message}")
+            
+        except Exception as e:
+            self.logger.error(f"Error during unmounting: {e}")
+            raise ValueError(f"Unmounting failed: {e}")
+        
+        return unmount_info

@@ -2,6 +2,7 @@
 # Core dependencies
 reportlab
 cryptography
+psutil
 
 # GUI dependencies (included with Python)
 # tkinter (built-in)

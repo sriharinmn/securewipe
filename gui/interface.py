@@ -3,12 +3,14 @@
 # =============================================================================
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import threading
 import logging
+import os
 from core.detector import DeviceDetector
 from core.wiper import DataWiper
 from core.certificate import CertificateGenerator
+from utils.device_manager import DeviceManager
 
 class SecureWiperGUI:
     """Enhanced GUI interface for the secure data wiper with SSD support"""
@@ -111,10 +113,28 @@ class SecureWiperGUI:
                                        command=self.update_method_description)
         self.dod_radio.grid(row=5, column=0, sticky=tk.W, padx=20)
         
+        # Options section
+        options_separator = ttk.Separator(method_frame, orient='horizontal')
+        options_separator.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=10)
+        
+        # Auto-unmount option
+        self.auto_unmount_var = tk.BooleanVar(value=True)
+        self.auto_unmount_check = ttk.Checkbutton(method_frame, 
+                                                text="🔓 Automatically unmount device before wiping",
+                                                variable=self.auto_unmount_var,
+                                                command=self.update_unmount_description)
+        self.auto_unmount_check.grid(row=7, column=0, sticky=tk.W, padx=20, pady=5)
+        
+        # Unmount description
+        self.unmount_desc_label = ttk.Label(method_frame, 
+                                          text="Automatically unmounts all partitions on the device before wiping. Recommended for most users.",
+                                          wraplength=600, font=('Arial', 8), foreground="green")
+        self.unmount_desc_label.grid(row=8, column=0, columnspan=2, sticky=tk.W, padx=40, pady=(0, 5))
+        
         # Method description
         self.method_desc_label = ttk.Label(method_frame, text="", wraplength=600, 
                                          font=('Arial', 9), foreground="blue")
-        self.method_desc_label.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+        self.method_desc_label.grid(row=9, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
         
         # Device information with enhanced SSD details
         info_frame = ttk.LabelFrame(main_frame, text="Device Information & Capabilities", padding="10")
@@ -161,6 +181,9 @@ class SecureWiperGUI:
         
         # Bind events
         self.device_combo.bind('<<ComboboxSelected>>', self.on_device_selected)
+        
+        # Initialize device manager for mount status
+        self.device_manager = DeviceManager()
     
     def refresh_devices(self):
         """Refresh the list of available devices with SSD detection"""
@@ -218,11 +241,24 @@ class SecureWiperGUI:
             # Update method description
             self.update_method_description()
             
-            # Check if device is safe to wipe
-            safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
+            # Update unmount description
+            self.update_unmount_description()
+            
+            # Check if device is safe to wipe (with auto-unmount disabled for initial check)
+            safe, reason = self.detector.is_device_safe_to_wipe(device['path'], auto_unmount=False)
             if not safe:
-                self.wipe_btn.config(state=tk.DISABLED)
-                messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
+                # If not safe due to mounting, but auto-unmount is enabled, it might still be ok
+                if "mounted" in reason.lower() and self.auto_unmount_var.get():
+                    # Re-check with auto-unmount enabled
+                    safe_with_unmount, unmount_reason = self.detector.is_device_safe_to_wipe(device['path'], auto_unmount=True)
+                    if safe_with_unmount:
+                        self.wipe_btn.config(state=tk.NORMAL)
+                    else:
+                        self.wipe_btn.config(state=tk.DISABLED)
+                        messagebox.showwarning("Device Warning", f"Cannot wipe this device: {unmount_reason}")
+                else:
+                    self.wipe_btn.config(state=tk.DISABLED)
+                    messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
             else:
                 self.wipe_btn.config(state=tk.NORMAL)
     
@@ -261,7 +297,49 @@ Device Name: {device['name']}
 Model: {device['model']}
 Size: {device['size']}
 Type: {device.get('type', 'Unknown')}
-Mounted: {'Yes' if device.get('mounted', False) else 'No'}
+
+MOUNTING STATUS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+        # Add detailed mount information
+        try:
+            mount_info = self.detector.get_device_mount_info(device['path'])
+            
+            if 'test_drive' in os.path.basename(device['path']):
+                info_text += """
+Device Status: ✅ Test File (No mounting concerns)
+Ready to Wipe: ✅ Yes"""
+            elif not mount_info['is_mounted']:
+                info_text += """
+Device Status: ✅ Not mounted
+Ready to Wipe: ✅ Yes"""
+            elif mount_info['is_system_device']:
+                info_text += """
+Device Status: 🚫 SYSTEM DEVICE - CANNOT WIPE
+Ready to Wipe: ❌ No (Contains critical system files)"""
+            else:
+                partition_count = len(mount_info['mounted_partitions'])
+                info_text += f"""
+Device Status: ⚠️ Has {partition_count} mounted partition(s)
+Mounted Partitions:"""
+                
+                for partition in mount_info['mounted_partitions']:
+                    info_text += f"""
+  • {partition['partition']} → {partition['mountpoint']} ({partition['fstype']})"""
+                
+                if mount_info['can_unmount']:
+                    info_text += """
+Ready to Wipe: ✅ Yes (Can auto-unmount partitions)"""
+                else:
+                    info_text += """
+Ready to Wipe: ⚠️ Contains critical partitions - manual unmount required"""
+                    
+        except Exception as e:
+            info_text += f"""
+Device Status: ❓ Unknown (Error: {e})
+Ready to Wipe: ⚠️ Unknown"""
+
+        info_text += """
 
 STORAGE TECHNOLOGY:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -357,6 +435,49 @@ COMPLIANCE STANDARDS:
         
         self.method_desc_label.config(text=desc)
     
+    def update_unmount_description(self):
+        """Update unmount option description based on selected device and unmount setting"""
+        if not self.selected_device:
+            return
+            
+        auto_unmount = self.auto_unmount_var.get()
+        device_path = self.selected_device['path']
+        
+        try:
+            # Get mount info for the device
+            mount_info = self.detector.get_device_mount_info(device_path)
+            
+            if 'test_drive' in os.path.basename(device_path):
+                desc = "Test files don't require unmounting."
+                color = "gray"
+            elif not mount_info['is_mounted']:
+                desc = "Device has no mounted partitions. No unmounting needed." 
+                color = "green"
+            elif mount_info['is_system_device']:
+                desc = "⚠️ WARNING: This is a system device! Automatic unmounting is disabled for safety."
+                color = "red"
+                self.auto_unmount_var.set(False)  # Force disable for system devices
+                self.auto_unmount_check.config(state=tk.DISABLED)
+            elif not mount_info['can_unmount']:
+                desc = "⚠️ Device contains critical system partitions and cannot be safely unmounted."
+                color = "red"
+                self.auto_unmount_var.set(False)  # Force disable
+                self.auto_unmount_check.config(state=tk.DISABLED)
+            elif auto_unmount:
+                partition_count = len(mount_info['mounted_partitions'])
+                desc = f"✅ Will automatically unmount {partition_count} mounted partition(s) before wiping."
+                color = "green"
+            else:
+                partition_count = len(mount_info['mounted_partitions'])
+                desc = f"⚠️ Device has {partition_count} mounted partition(s). You must unmount manually or enable auto-unmount."
+                color = "orange"
+                
+            self.unmount_desc_label.config(text=desc, foreground=color)
+            
+        except Exception as e:
+            desc = f"⚠️ Cannot determine mount status: {e}"
+            self.unmount_desc_label.config(text=desc, foreground="red")
+    
     def start_wipe(self):
         """Start the wiping process with method validation"""
         if not self.selected_device:
@@ -434,11 +555,15 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
             
             device_path = self.selected_device['path']
             
+            # Get auto-unmount setting
+            auto_unmount = self.auto_unmount_var.get()
+            
             cert_id = self.wiper.wipe_device(
                 device_path=device_path, 
                 method=method, 
                 device_info=self.selected_device,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                auto_unmount=auto_unmount
             )
             
             # Success

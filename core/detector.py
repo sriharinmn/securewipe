@@ -8,13 +8,15 @@ import subprocess
 import json
 import logging
 import glob
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+from utils.device_manager import DeviceManager
 
 class DeviceDetector:
-    """Detect and analyze storage devices"""
+    """Detect and analyze storage devices with automatic unmounting support"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self.device_manager = DeviceManager()
     
     def get_all_devices(self) -> List[Dict[str, Any]]:
         """Get list of all storage devices"""
@@ -366,8 +368,17 @@ class DeviceDetector:
                 return os.path.basename(path)
             return "Unknown Device"
     
-    def is_device_safe_to_wipe(self, device_path: str) -> tuple[bool, str]:
-        """Check if device is safe to wipe"""
+    def is_device_safe_to_wipe(self, device_path: str, auto_unmount: bool = True) -> Tuple[bool, str]:
+        """
+        Check if device is safe to wipe with optional automatic unmounting
+        
+        Args:
+            device_path: Path to the device
+            auto_unmount: If True, attempt to automatically unmount the device
+            
+        Returns:
+            Tuple of (is_safe, message)
+        """
         if not os.path.exists(device_path):
             return False, "Device does not exist"
         
@@ -375,15 +386,60 @@ class DeviceDetector:
         if 'test_drive' in os.path.basename(device_path):
             return True, "Test file is safe to wipe"
         
+        # Check if it's the system drive first (before unmounting)
+        if self._is_system_drive(device_path):
+            return False, "Cannot wipe system drive - contains critical system files"
+        
         # Check if device is mounted
         if self._is_device_mounted(device_path):
-            return False, "Device is currently mounted"
-        
-        # Check if it's the system drive
-        if self._is_system_drive(device_path):
-            return False, "Cannot wipe system drive"
+            if not auto_unmount:
+                return False, "Device is currently mounted (automatic unmounting disabled)"
+            
+            # Attempt automatic unmounting
+            self.logger.info(f"Device {device_path} is mounted. Attempting automatic unmount...")
+            success, message, unmounted_partitions = self.device_manager.unmount_device(device_path, force=False)
+            
+            if success:
+                partition_count = len(unmounted_partitions)
+                self.logger.info(f"Successfully unmounted {partition_count} partitions from {device_path}")
+                return True, f"Device is safe to wipe (automatically unmounted {partition_count} partitions)"
+            else:
+                self.logger.error(f"Failed to unmount {device_path}: {message}")
+                return False, f"Device is mounted and cannot be automatically unmounted: {message}"
         
         return True, "Device is safe to wipe"
+    
+    def get_device_mount_info(self, device_path: str) -> Dict[str, Any]:
+        """Get detailed mounting information for a device"""
+        mount_info = {
+            'is_mounted': False,
+            'mounted_partitions': [],
+            'is_system_device': False,
+            'can_unmount': False
+        }
+        
+        try:
+            # Check if mounted
+            mount_info['is_mounted'] = self._is_device_mounted(device_path)
+            
+            # Get mounted partition details
+            if mount_info['is_mounted']:
+                mount_info['mounted_partitions'] = self.device_manager.get_mounted_partitions(device_path)
+            
+            # Check if system device
+            mount_info['is_system_device'] = self._is_system_drive(device_path)
+            
+            # Determine if we can safely unmount
+            mount_info['can_unmount'] = (
+                mount_info['is_mounted'] and 
+                not mount_info['is_system_device'] and
+                not self.device_manager._has_critical_partitions(mount_info['mounted_partitions'])
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Failed to get mount info for {device_path}: {e}")
+            
+        return mount_info
     
     def _is_device_mounted(self, device_path: str) -> bool:
         """Check if device is mounted"""
