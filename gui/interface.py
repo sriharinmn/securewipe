@@ -1,5 +1,5 @@
 # =============================================================================
-# gui/interface.py - Enhanced GUI Interface with SSD Support
+# gui/interface.py - Enhanced GUI Interface with SSD Support and Scroll Wheel
 # =============================================================================
 
 import tkinter as tk
@@ -11,7 +11,7 @@ from core.wiper import DataWiper
 from core.certificate import CertificateGenerator
 
 class SecureWiperGUI:
-    """Enhanced GUI interface for the secure data wiper with SSD support"""
+    """Enhanced GUI interface for the secure data wiper with SSD support and scroll wheel"""
     
     def __init__(self):
         self.root = tk.Tk()
@@ -28,7 +28,65 @@ class SecureWiperGUI:
         self.wipe_thread = None
         
         self.setup_ui()
+        self.setup_scroll_bindings()
         self.refresh_devices()
+    
+    def setup_scroll_bindings(self):
+        """Setup mouse wheel scrolling for the entire interface"""
+        def _on_mousewheel(event):
+            # Determine which widget should receive the scroll event
+            widget = event.widget
+            
+            # Find the closest scrollable parent
+            scrollable_widget = self._find_scrollable_parent(widget)
+            
+            if scrollable_widget:
+                if hasattr(scrollable_widget, 'yview_scroll'):
+                    # For Text widgets and other scrollable widgets
+                    scrollable_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                elif hasattr(scrollable_widget, 'yview'):
+                    # For other widgets with yview
+                    scrollable_widget.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+        def _bind_mousewheel(widget):
+            """Recursively bind mousewheel to widget and all children"""
+            widget.bind("<MouseWheel>", _on_mousewheel)  # Windows
+            widget.bind("<Button-4>", lambda e: _on_mousewheel(self._create_wheel_event(e, 120)))  # Linux scroll up
+            widget.bind("<Button-5>", lambda e: _on_mousewheel(self._create_wheel_event(e, -120)))  # Linux scroll down
+            
+            # Bind to all children
+            for child in widget.winfo_children():
+                _bind_mousewheel(child)
+        
+        # Bind mousewheel to root and all widgets
+        _bind_mousewheel(self.root)
+    
+    def _create_wheel_event(self, event, delta):
+        """Create a wheel event with delta for Linux compatibility"""
+        class WheelEvent:
+            def __init__(self, widget, delta):
+                self.widget = widget
+                self.delta = delta
+        return WheelEvent(event.widget, delta)
+    
+    def _find_scrollable_parent(self, widget):
+        """Find the closest scrollable parent widget"""
+        current = widget
+        
+        # Check if current widget is scrollable
+        while current:
+            if isinstance(current, tk.Text) and current == self.info_text:
+                return current
+            elif hasattr(current, 'yview') and hasattr(current, 'yview_scroll'):
+                return current
+            
+            try:
+                current = current.master
+            except:
+                break
+        
+        # Default to info_text if no specific scrollable widget found
+        return self.info_text if hasattr(self, 'info_text') else None
     
     def setup_ui(self):
         """Setup the enhanced user interface with SSD support"""
@@ -39,12 +97,28 @@ class SecureWiperGUI:
         style.configure("HDD.TLabel", foreground="black", font=('Arial', 9))
         style.configure("Warning.TLabel", foreground="red", font=('Arial', 9, 'bold'))
         
-        # Main container
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Main container with scrollable frame
+        self.canvas = tk.Canvas(self.root)
+        self.scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.canvas)
         
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        # Configure canvas scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Pack canvas and scrollbar
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        # Main frame inside scrollable area
+        main_frame = ttk.Frame(self.scrollable_frame, padding="10")
+        main_frame.pack(fill="both", expand=True)
+        
         main_frame.columnconfigure(1, weight=1)
         
         # Title
@@ -116,18 +190,34 @@ class SecureWiperGUI:
                                          font=('Arial', 9), foreground="blue")
         self.method_desc_label.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
         
-        # Device information with enhanced SSD details
+        # Device information with enhanced SSD details and improved scrolling
         info_frame = ttk.LabelFrame(main_frame, text="Device Information & Capabilities", padding="10")
         info_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
         info_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(4, weight=1)
+        info_frame.rowconfigure(0, weight=1)
         
-        self.info_text = tk.Text(info_frame, height=10, state=tk.DISABLED, wrap=tk.WORD)
-        info_scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.info_text.yview)
+        # Create text widget with scrollbar
+        text_frame = ttk.Frame(info_frame)
+        text_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        text_frame.columnconfigure(0, weight=1)
+        text_frame.rowconfigure(0, weight=1)
+        
+        self.info_text = tk.Text(text_frame, height=12, state=tk.DISABLED, wrap=tk.WORD,
+                                font=('Consolas', 9), bg='#f8f9fa', fg='#333333')
+        info_scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=self.info_text.yview)
         self.info_text.configure(yscrollcommand=info_scrollbar.set)
         
         self.info_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         info_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Enhanced mouse wheel binding for info text
+        def _on_info_text_mousewheel(event):
+            self.info_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            return "break"  # Prevent event propagation
+        
+        self.info_text.bind("<MouseWheel>", _on_info_text_mousewheel)
+        self.info_text.bind("<Button-4>", lambda e: _on_info_text_mousewheel(self._create_wheel_event(e, 120)))
+        self.info_text.bind("<Button-5>", lambda e: _on_info_text_mousewheel(self._create_wheel_event(e, -120)))
         
         # Progress section
         progress_frame = ttk.LabelFrame(main_frame, text="Wipe Progress", padding="10")
@@ -161,6 +251,17 @@ class SecureWiperGUI:
         
         # Bind events
         self.device_combo.bind('<<ComboboxSelected>>', self.on_device_selected)
+        
+        # Add scroll wheel support to canvas
+        def _on_canvas_mousewheel(event):
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+        self.canvas.bind("<MouseWheel>", _on_canvas_mousewheel)
+        self.canvas.bind("<Button-4>", lambda e: _on_canvas_mousewheel(self._create_wheel_event(e, 120)))
+        self.canvas.bind("<Button-5>", lambda e: _on_canvas_mousewheel(self._create_wheel_event(e, -120)))
+        
+        # Allow canvas to receive focus for scrolling
+        self.canvas.focus_set()
     
     def refresh_devices(self):
         """Refresh the list of available devices with SSD detection"""
@@ -316,6 +417,8 @@ COMPLIANCE STANDARDS:
 • DoD 5220.22-M: Department of Defense standard
 • Common Criteria Protection Profiles
 • Federal Information Processing Standards (FIPS)
+
+💡 TIP: Use mouse wheel to scroll through this information area
 """
         
         self.info_text.insert(1.0, info_text)
@@ -570,13 +673,40 @@ Keep these certificates as legal proof of secure data destruction."""
             messagebox.showerror("Error", f"Failed to create test files: {e}")
     
     def run(self):
-        """Run the GUI application"""
+        """Run the GUI application with enhanced scroll support"""
         try:
             # Add missing import for simpledialog
             import tkinter.simpledialog
             tk.simpledialog = tkinter.simpledialog
             
+            # Set up additional keyboard shortcuts for scrolling
+            def on_key_press(event):
+                if event.keysym == 'Up':
+                    self.canvas.yview_scroll(-1, "units")
+                elif event.keysym == 'Down':
+                    self.canvas.yview_scroll(1, "units")
+                elif event.keysym == 'Prior':  # Page Up
+                    self.canvas.yview_scroll(-10, "units")
+                elif event.keysym == 'Next':   # Page Down
+                    self.canvas.yview_scroll(10, "units")
+                elif event.keysym == 'Home':
+                    self.canvas.yview_moveto(0)
+                elif event.keysym == 'End':
+                    self.canvas.yview_moveto(1)
+            
+            self.root.bind('<Key>', on_key_press)
+            
+            # Update scroll region when window is resized
+            def on_frame_configure(event):
+                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+            
+            self.scrollable_frame.bind('<Configure>', on_frame_configure)
+            
+            # Make sure canvas can receive keyboard focus
+            self.root.focus_set()
+            
             self.root.mainloop()
+            
         except Exception as e:
             self.logger.error(f"GUI error: {e}")
             messagebox.showerror("Application Error", f"Application error: {e}")
