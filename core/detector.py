@@ -126,31 +126,54 @@ class DeviceDetector:
                 Write-Host "Error getting disks: $_" -ForegroundColor Red
             }
             
+            # Track physical disk numbers we've already processed
+            $processedDisks = @()
+            foreach ($disk in $disks) {
+                $processedDisks += $disk.Number
+            }
+            
             # Also get logical drives (drive letters)
             try {
-                $logicalDisks = Get-WmiObject -Class Win32_LogicalDisk -ErrorAction SilentlyContinue
+                $logicalDisks = Get-WmiObject -Class Win32_LogicalDisk -ErrorAction SilentlyContinue | 
+                    Where-Object { $_.DriveType -eq 2 }  # Only removable disks
+                
                 foreach ($logicalDisk in $logicalDisks) {
-                    # Skip if we already have this as a physical disk
-                    $physicalDisk = $null
+                    $isDuplicate = $false
+                    
+                    # Check if this logical disk belongs to a physical disk we've already processed
                     try {
-                        $partition = Get-WmiObject -Class Win32_LogicalDiskToPartition | Where-Object { $_.Dependent -match $logicalDisk.DeviceID }
+                        $partition = Get-WmiObject -Class Win32_LogicalDiskToPartition | 
+                            Where-Object { $_.Dependent -match $logicalDisk.DeviceID }
+                            
                         if ($partition) {
-                            $diskDrive = Get-WmiObject -Class Win32_DiskDriveToDiskPartition | Where-Object { $_.Dependent -eq $partition.Antecedent }
+                            $diskDrive = Get-WmiObject -Class Win32_DiskDriveToDiskPartition | 
+                                Where-Object { $_.Dependent -eq $partition.Antecedent }
+                                
                             if ($diskDrive) {
-                                $physicalDisk = Get-WmiObject -Class Win32_DiskDrive | Where-Object { $diskDrive.Antecedent -match $_.DeviceID }
+                                $diskMatch = [regex]::Match($diskDrive.Antecedent, 'PHYSICALDRIVE(\\d+)')
+                                if ($diskMatch.Success) {
+                                    $diskNum = [int]$diskMatch.Groups[1].Value
+                                    # Skip if we've already processed this physical disk
+                                    if ($processedDisks -contains $diskNum) {
+                                        $isDuplicate = $true
+                                    }
+                                }
                             }
                         }
-                    } catch {}
+                    } catch { 
+                        # If we can't determine, assume it's not a duplicate
+                        $isDuplicate = $false
+                    }
                     
-                    # Add logical disk info if it's removable or external
-                    if ($logicalDisk.DriveType -eq 2) {  # Removable disk
+                    # Only add if not a duplicate
+                    if (-not $isDuplicate) {
                         $results += [PSCustomObject]@{
                             DeviceID = -1
                             Path = $logicalDisk.DeviceID
                             Model = if ($logicalDisk.VolumeName) { "$($logicalDisk.VolumeName) ($($logicalDisk.DeviceID))" } else { "Removable Drive ($($logicalDisk.DeviceID))" }
                             Size = if ($logicalDisk.Size) { $logicalDisk.Size.ToString() + " bytes" } else { "Unknown" }
                             Type = "Removable"
-                            BusType = "Unknown"
+                            BusType = "USB"
                             Status = "OK"
                             Health = "Healthy"
                             IsRemovable = $true
