@@ -26,13 +26,92 @@ class DeviceDetector:
             return []
 
     def _get_linux_devices(self) -> List[Dict[str, Any]]:
-        """Get Linux storage devices with SSD detection"""
+        """Get Linux storage devices with SSD detection
+        
+        Returns:
+            List of dictionaries containing device information including:
+            - path: Device path (e.g., /dev/sda)
+            - name: Device model/serial
+            - size: Size in bytes
+            - is_ssd: Boolean indicating if the device is an SSD
+        """
         devices = []
         try:
-            # Implementation for Linux
-            pass
+            # Get all block devices using lsblk
+            cmd = [
+                'lsblk', '-d', '-n', '-o', 'NAME,MODEL,SIZE,TYPE,ROTA',
+                '-e', '7'  # Exclude loop devices and partitions
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                self.logger.error(f"Error running lsblk: {result.stderr}")
+                return devices
+                
+            # Parse lsblk output
+            for line in result.stdout.strip().split('\n'):
+                if not line.strip():
+                    continue
+                    
+                parts = line.split()
+                if len(parts) < 5:
+                    continue
+                    
+                name = parts[0]
+                model = ' '.join(parts[1:-3])
+                size = parts[-3]
+                dev_type = parts[-2]
+                is_rotational = parts[-1] == '1'  # 1 for HDD, 0 for SSD
+                
+                # Skip if not a disk
+                if dev_type != 'disk':
+                    continue
+                    
+                # Handle device path
+                device_path = f"/dev/{name}"
+                
+                # Get more detailed info with udev
+                udev_info = {}
+                try:
+                    udev_cmd = ['udevadm', 'info', '--query=property', '--name', device_path]
+                    udev_result = subprocess.run(udev_cmd, capture_output=True, text=True)
+                    if udev_result.returncode == 0:
+                        for prop in udev_result.stdout.split('\n'):
+                            if '=' in prop:
+                                key, value = prop.split('=', 1)
+                                udev_info[key] = value.strip("'")
+                except Exception as e:
+                    self.logger.warning(f"Could not get udev info for {device_path}: {e}")
+                
+                # Get size in bytes
+                size_bytes = 0
+                try:
+                    with open(f"/sys/block/{name}/size", 'r') as f:
+                        sectors = int(f.read().strip())
+                        size_bytes = sectors * 512  # Convert 512-byte sectors to bytes
+                except Exception as e:
+                    self.logger.warning(f"Could not get size for {device_path}: {e}")
+                
+                # Add device info
+                device_info = {
+                    'path': device_path,
+                    'name': udev_info.get('ID_MODEL', model).strip() or f"Disk {name}",
+                    'model': udev_info.get('ID_MODEL', model).strip(),
+                    'size': size_bytes,
+                    'size_display': size,
+                    'is_ssd': not is_rotational,
+                    'type': 'SSD' if not is_rotational else 'HDD',
+                    'serial': udev_info.get('ID_SERIAL_SHORT', ''),
+                    'vendor': udev_info.get('ID_VENDOR', ''),
+                    'removable': udev_info.get('ID_DRIVE_MEDIA_REMOVABLE') == '1',
+                    'udev_info': udev_info
+                }
+                
+                devices.append(device_info)
+                
         except Exception as e:
-            self.logger.error(f"Error getting Linux devices: {e}")
+            self.logger.error(f"Error getting Linux devices: {e}", exc_info=True)
+            
         return devices
 
     def _get_windows_devices(self) -> List[Dict[str, Any]]:

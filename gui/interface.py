@@ -178,10 +178,20 @@ Standards Compliance: {'NIST SP 800-88 Rev. 1' if self.method_var.get() == 'nist
             
             # Check if device is safe to wipe
             device_path = device['path']
-            # Ensure the path includes a drive number for physical drives
-            if device_path.upper() == r'\\.\PHYSICALDRIVE':
-                device_path = r'\\.\PHYSICALDRIVE0'  # Default to first drive if no number specified
-                
+            
+            # Handle device paths based on platform
+            if sys.platform.startswith('win'):
+                # Windows: Ensure the path includes a drive number for physical drives
+                if device_path.upper() == r'\\.\PHYSICALDRIVE':
+                    device_path = r'\\.\PHYSICALDRIVE0'  # Default to first drive if no number specified
+            elif sys.platform.startswith('linux'):
+                # Linux: Ensure the path is a valid block device
+                if not os.path.exists(device_path):
+                    self.logger.warning(f"Device path does not exist: {device_path}")
+                    self.wipe_btn.config(state=tk.DISABLED)
+                    messagebox.showwarning("Device Error", f"Device not found: {device_path}")
+                    return
+            
             safe, reason = self.detector.is_device_safe_to_wipe(device_path)
             if not safe:
                 self.wipe_btn.config(state=tk.DISABLED)
