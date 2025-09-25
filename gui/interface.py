@@ -142,11 +142,27 @@ class SecureWiperGUI:
             self.info_text.config(state=tk.NORMAL)
             self.info_text.delete(1.0, tk.END)
             
+            # Get disk type information
+            disk_type = device.get('disk_type', 'Unknown')
+            if disk_type == 'Unknown':
+                if device.get('is_ssd'):
+                    disk_type = 'SSD (auto-detected)'
+                elif device.get('is_hdd'):
+                    disk_type = 'HDD (auto-detected)'
+            
+            # Get additional disk info if available
+            disk_info = []
+            if 'media_type' in device and device['media_type']:
+                disk_info.append(f"Media Type: {device['media_type']}")
+            if 'bus_type' in device and device['bus_type']:
+                disk_info.append(f"Bus Type: {device['bus_type']}")
+            
             info_text = f"""Device Path: {device['path']}
 Name: {device['name']}
 Model: {device['model']}
 Size: {device['size']}
-Type: {device['type']}
+Type: {device['type']} ({disk_type})
+{' | '.join(disk_info)}
 Mounted: {'Yes' if device.get('mounted', False) else 'No'}
 
 ⚠️  WARNING: This operation will PERMANENTLY DESTROY all data on this device!
@@ -161,7 +177,12 @@ Standards Compliance: {'NIST SP 800-88 Rev. 1' if self.method_var.get() == 'nist
             self.info_text.config(state=tk.DISABLED)
             
             # Check if device is safe to wipe
-            safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
+            device_path = device['path']
+            # Ensure the path includes a drive number for physical drives
+            if device_path.upper() == r'\\.\PHYSICALDRIVE':
+                device_path = r'\\.\PHYSICALDRIVE0'  # Default to first drive if no number specified
+                
+            safe, reason = self.detector.is_device_safe_to_wipe(device_path)
             if not safe:
                 self.wipe_btn.config(state=tk.DISABLED)
                 messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")

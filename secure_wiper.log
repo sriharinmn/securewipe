@@ -1,0 +1,299 @@
+2025-09-22 16:20:18,637 - gui.interface - ERROR - Failed to refresh devices: string indices must be integers, not 'str'
+2025-09-22 16:23:02,254 - gui.interface - ERROR - Failed to refresh devices: string indices must be integers, not 'str'
+2025-09-22 16:24:46,089 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:24:52,316 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:24:52,656 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:24:52,892 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:24:53,146 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:24:53,393 - core.detector - ERROR - Failed to detect Windows devices: Command '['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', '\n            $disks = Get-Disk | Where-Object { $_.BusType -ne \'File Backed Virtual\' }\n            $results = @()\n            \n            foreach ($disk in $disks) {\n                $partitions = $disk | Get-Partition -ErrorAction SilentlyContinue\n                $isMounted = $false\n                \n                # Check if any partition is mounted\n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                        break\n                    }\n                }\n                \n                $results += [PSCustomObject]@{\n                    DeviceID = $disk.Number\n                    Path = "\\\\.\\PHYSICALDRIVE$($disk.Number)"\n                    Model = $disk.Model\n                    Size = if ($disk.Size) { "{0} bytes" -f $disk.Size } else { "Unknown" }\n                    Type = $disk.BusType\n                $isMounted = $false\n                \n                foreach ($part in $partitions) {\n                    if ($part.DriveLetter -or $part.AccessPaths) {\n                        $isMounted = $true\n                    }\n                    if ($part.IsSystem) { $isSystem = $true }\n                    if ($part.IsBoot) { $isBoot = $true }\n                }\n                \n                [PSCustomObject]@{\n                    DeviceID = $_.Index\n                    Path = $_.DeviceID\n                    Model = $_.Model\n                    Size = if ($_.Size) { "{0} bytes" -f $_.Size } else { "Unknown" }\n                    Type = \'disk\'\n                    IsSystem = $isSystem\n                    IsBoot = $isBoot\n                    IsMounted = $isMounted\n                }\n            } | ConvertTo-Json -Depth 5 -Compress\n            ']' returned non-zero exit status 1.
+2025-09-22 16:30:03,751 - core.detector - ERROR - Error while processing test files: name 'glob' is not defined
+2025-09-22 16:32:56,999 - core.detector - ERROR - Error while processing test files: name 'glob' is not defined
+2025-09-22 16:36:46,533 - core.detector - INFO - TEMP directory: C:\Users\griff\AppData\Local\Temp
+2025-09-22 16:36:46,533 - core.detector - INFO - Looking for test files matching: C:\Users\griff\AppData\Local\Temp\test_drive*.img
+2025-09-22 16:36:46,541 - core.detector - INFO - Found 1 test files
+2025-09-22 16:36:46,542 - core.detector - INFO - Added test file: C:\Users\griff\AppData\Local\Temp\test_drive1.img (Size: 1048577 bytes)
+2025-09-22 16:37:05,392 - core.detector - INFO - TEMP directory: C:\Users\griff\AppData\Local\Temp
+2025-09-22 16:37:05,393 - core.detector - INFO - Looking for test files matching: C:\Users\griff\AppData\Local\Temp\test_drive*.img
+2025-09-22 16:37:05,401 - core.detector - INFO - Found 1 test files
+2025-09-22 16:37:05,401 - core.detector - INFO - Added test file: C:\Users\griff\AppData\Local\Temp\test_drive1.img (Size: 1048577 bytes)
+2025-09-22 16:37:22,838 - core.wiper - INFO - Starting NIST wipe of C:\Users\griff\AppData\Local\Temp\test_drive1.img (1048577 bytes)
+2025-09-22 16:37:22,838 - core.wiper - INFO - Starting pass 1/4
+2025-09-22 16:37:22,853 - core.wiper - INFO - Starting pass 2/4
+2025-09-22 16:37:22,862 - core.wiper - INFO - Starting pass 3/4
+2025-09-22 16:37:22,873 - core.wiper - INFO - Starting pass 4/4
+2025-09-22 16:37:22,889 - core.wiper - INFO - Wipe completed successfully. Certificate ID: 6a432d5b-acdd-403e-b345-f2833a3f3052
+2025-09-22 16:41:42,710 - core.detector - INFO - TEMP directory: C:\Users\griff\AppData\Local\Temp
+2025-09-22 16:41:42,711 - core.detector - INFO - Looking for test files matching: C:\Users\griff\AppData\Local\Temp\test_drive*.img
+2025-09-22 16:41:42,719 - core.detector - INFO - Found 2 test files
+2025-09-22 16:41:42,720 - core.detector - INFO - Added test file: C:\Users\griff\AppData\Local\Temp\test_drive1.img (Size: 1048577 bytes)
+2025-09-22 16:41:42,720 - core.detector - INFO - Added test file: C:\Users\griff\AppData\Local\Temp\test_drive2.img (Size: 52428800 bytes)
+2025-09-22 16:41:58,012 - core.wiper - INFO - Starting NIST wipe of C:\Users\griff\AppData\Local\Temp\test_drive2.img (52428800 bytes)
+2025-09-22 16:41:58,013 - core.wiper - INFO - Starting pass 1/4
+2025-09-22 16:41:58,364 - core.wiper - INFO - Starting pass 2/4
+2025-09-22 16:41:58,688 - core.wiper - INFO - Starting pass 3/4
+2025-09-22 16:41:59,140 - core.wiper - INFO - Starting pass 4/4
+2025-09-22 16:41:59,470 - core.wiper - INFO - Wipe completed successfully. Certificate ID: e22319da-fdd3-4d0d-886d-90ea615722ab
+2025-09-25 18:04:39,595 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:04:57,079 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:04:57,329 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:04:57,577 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:04:57,842 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:04:58,097 - core.detector - ERROR - Failed to get disk info: At line:64 char:64
++ ...                       type = if ($isVirtual) { 'virtual' else 'physic ...
++                                                              ~~~~
+Unexpected token 'else' in expression or statement.
+At line:64 char:81
++ ...                  type = if ($isVirtual) { 'virtual' else 'physical' }
++                                                                          ~
+The hash literal was incomplete.
+At line:65 char:29
++                             bus_type = $disk.BusType
++                             ~~~~~~~~
+Unexpected token 'bus_type' in expression or statement.
+At line:70 char:26
++                         }
++                          ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:18
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                  ~
+The Try statement is missing its Catch or Finally block.
+At line:74 char:19
++                 } | ConvertTo-Json -Depth 3 -Compress -ErrorAction St ...
++                   ~
+An empty pipe element is not allowed.
+At line:75 char:13
++             } catch {
++             ~
+Unexpected token '}' in expression or statement.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : UnexpectedToken
+2025-09-25 18:05:57,654 - core.detector - WARNING - Invalid device path format: \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:05:57,655 - gui.interface - ERROR - Failed to refresh devices: cannot unpack non-iterable bool object
+2025-09-25 18:06:35,788 - core.detector - WARNING - Invalid device path format: \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:08:25,733 - core.detector - WARNING - Invalid device path format: \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:17:52,409 - core.detector - WARNING - Invalid device path format: \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:18:43,235 - core.detector - WARNING - Invalid device path format: \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:20:12,677 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:20:12,677 - gui.interface - ERROR - Failed to refresh devices: cannot unpack non-iterable NoneType object
+2025-09-25 18:20:46,953 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:20:46,954 - gui.interface - ERROR - Failed to refresh devices: cannot unpack non-iterable NoneType object
+2025-09-25 18:21:17,071 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:21:17,072 - core.detector - ERROR - Error checking Windows system drive: unexpected '{' in field name
+Traceback (most recent call last):
+  File "C:\Users\griff\OneDrive\Desktop\securewipe\core\detector.py", line 420, in _is_system_drive
+    """.format(system_drive[0])
+        ~~~~~~^^^^^^^^^^^^^^^^^
+ValueError: unexpected '{' in field name
+2025-09-25 18:21:54,608 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:25:44,221 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:25:44,594 - core.detector - WARNING - Failed to get disk info: At line:11 char:26
++                         }}
++                          ~
+Missing '=' operator after key in hash literal.
+At line:14 char:31
++                         $disks | ConvertTo-Json -Compress
++                               ~
+Missing '=' operator after key in hash literal.
+At line:3 char:26
++                     try {{
++                          ~
+Missing closing '}' in statement block or type definition.
+At line:3 char:25
++                     try {{
++                         ~
+Missing closing '}' in statement block or type definition.
+At line:19 char:23
++                     }}
++                       ~
+The Try statement is missing its Catch or Finally block.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingEqualsInHashLiteral
+ 
+
+2025-09-25 18:26:29,011 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:26:30,487 - core.detector - ERROR - Error checking Windows system drive: name 're' is not defined
+Traceback (most recent call last):
+  File "C:\Users\griff\OneDrive\Desktop\securewipe\core\detector.py", line 449, in _is_system_drive
+    disk_num_match = re.search(r'PHYSICALDRIVE(\d+)', device_path, re.IGNORECASE)
+                     ^^
+NameError: name 're' is not defined. Did you mean: 'e'? Or did you forget to import 're'?
+2025-09-25 18:27:15,141 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:27:16,709 - core.detector - WARNING - Could not determine disk type for \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:29:15,883 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:29:17,530 - core.detector - WARNING - Could not determine disk type for \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:29:27,673 - core.detector - WARNING - Unsupported device path format: \\?\usbstor#disk&ven_sandisk&prod_cruzer_blade&rev_1.00#4c530000190211221315&0#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:29:59,759 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:30:01,351 - core.detector - WARNING - Could not determine disk type for \\?\scsi#disk&ven_nvme&prod_micron_2400_mtfd#5&fb3172e&0&000000#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:31:05,548 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:31:05,549 - core.detector - INFO - Found NVMe drive: nvme
+2025-09-25 18:35:27,679 - core.detector - INFO - Found NVMe drive: nvme micron_2400_mtfd
+2025-09-25 18:35:27,679 - core.detector - INFO - Found NVMe drive: nvme
+2025-09-25 18:35:35,366 - core.detector - WARNING - Unsupported device path format: \\?\usbstor#disk&ven_sandisk&prod_cruzer_blade&rev_1.00#4c530000190211221315&0#{53f56307-b6bf-11d0-94f2-00a0c91efb8b}
+2025-09-25 18:41:03,097 - gui.interface - ERROR - Failed to refresh devices: 'DeviceDetector' object has no attribute '_is_device_mounted'
+2025-09-25 18:43:39,757 - core.wiper - INFO - Starting NIST wipe of C:\Users\griff\AppData\Local\Temp\test_drive2.img (52428800 bytes)
+2025-09-25 18:43:39,758 - core.wiper - INFO - Starting pass 1/4
+2025-09-25 18:43:40,097 - core.wiper - INFO - Starting pass 2/4
+2025-09-25 18:43:40,419 - core.wiper - INFO - Starting pass 3/4
+2025-09-25 18:43:40,737 - core.wiper - INFO - Starting pass 4/4
+2025-09-25 18:43:41,076 - core.wiper - INFO - Wipe completed successfully. Certificate ID: 077a6c05-00a5-41f2-a714-3fd1a82fe754
+2025-09-25 18:50:16,796 - core.detector - ERROR - Error processing disk info: 'NoneType' object has no attribute 'lower'
+2025-09-25 18:50:16,796 - core.detector - ERROR - Error processing disk info: 'NoneType' object has no attribute 'lower'
+2025-09-25 18:51:53,767 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE
+2025-09-25 18:51:53,767 - core.detector - WARNING - Device path does not exist: \\.\PHYSICALDRIVE
+2025-09-25 18:51:53,768 - core.detector - WARNING - Current working directory: C:\Users\griff\OneDrive\Desktop\securewipe
+2025-09-25 18:51:53,768 - gui.interface - ERROR - Failed to refresh devices: [WinError 3] The system cannot find the path specified: '\\\\.\\PHYSICALDRIVE'
+2025-09-25 18:52:37,725 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 18:52:44,340 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 18:52:49,931 - core.detector - INFO - Checking device path: C:\Users\griff\AppData\Local\Temp\test_drive1.img
+2025-09-25 18:54:20,137 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 18:54:28,696 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 18:57:07,608 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 18:57:17,441 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 19:15:32,129 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0
+2025-09-25 19:16:10,633 - core.detector - INFO - Checking device path: \\.\PHYSICALDRIVE0

@@ -1,0 +1,45 @@
+{
+  "certificate_id": "6a432d5b-acdd-403e-b345-f2833a3f3052",
+  "generated_at": "2025-09-22T16:37:22.882393",
+  "device_info": {
+    "path": "C:\\Users\\griff\\AppData\\Local\\Temp\\test_drive1.img",
+    "size_bytes": 1048577,
+    "size_human": "1.00 MB"
+  },
+  "wipe_details": {
+    "method": "NIST",
+    "start_time": "2025-09-22T16:37:22.838437",
+    "end_time": "2025-09-22T16:37:22.881874",
+    "duration_seconds": 0.043437,
+    "total_passes": 4
+  },
+  "verification": {
+    "hashes": [
+      {
+        "pass": 1,
+        "pattern": "00",
+        "hash": "2cb74edba754a81d121c9db6833704a8e7d417e5b13d1a19f4a52f007d644264"
+      },
+      {
+        "pass": 2,
+        "pattern": "ff",
+        "hash": "97f1b26601b4e889c9c1fa0c9fbffccd15eb2900e3a326f53715dd578c72b0a7"
+      },
+      {
+        "pass": 3,
+        "pattern": "aa",
+        "hash": "d8fd48cd2634a4a0b7841a4700dfe9714c1bd363e778f0a253457603477272b4"
+      },
+      {
+        "pass": 4,
+        "pattern": "55",
+        "hash": "73e7963cbea9df24725c1333103449f018081d112f0e0db04a6eb5eb14327c2d"
+      }
+    ],
+    "certificate_hash": "83a19da4ce4ed9db3f8468f69288d9d09b38a0a4c294998dafbcc1aaeeacf745"
+  },
+  "compliance": {
+    "standard": "NIST SP 800-88 Rev. 1",
+    "verified": true
+  }
+}

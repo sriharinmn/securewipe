@@ -1,21 +1,32 @@
-
 # Core dependencies
-reportlab
-cryptography
+reportlab>=4.0.0
+cryptography>=41.0.0
+pywin32>=306; sys_platform == 'win32'  # Required for Windows-specific functionality
+psutil>=5.9.0  # For better process and disk handling
 
-# GUI dependencies (included with Python)
-# tkinter (built-in)
+# Development and Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
 
-# Testing
-# unittest (built-in)
+# Optional (for virtual disk testing on Windows)
+pythonnet>=3.0.0; sys_platform == 'win32'  # For .NET interop
 
-# Development dependencies
-# logging (built-in)
-# json (built-in)
-# os (built-in)
-# sys (built-in)
-# subprocess (built-in)
-# threading (built-in)
-# hashlib (built-in)
-# uuid (built-in)
-# datetime (built-in)
+# Built-in Python modules (documentation only, no need to install):
+# - tkinter (GUI)
+# - unittest (testing)
+# - logging
+# - json
+# - os
+# - sys
+# - subprocess
+# - threading
+# - hashlib
+# - uuid
+# - re
+# - platform
+# - time
+# - datetime
+# - shutil
