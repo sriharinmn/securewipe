@@ -8,8 +8,12 @@ import random
 import hashlib
 import time
 import logging
-from typing import Optional, Callable
+import subprocess
+import struct
+from typing import Optional, Callable, Dict, List
 from datetime import datetime
+from utils.safety import SafetyChecker
+from utils.config import Config
 
 class DataWiper:
     """Core data wiping engine with NIST SP 800-88 compliance"""
@@ -32,17 +36,50 @@ class DataWiper:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.block_size = 64 * 1024  # 64KB blocks for performance
+        self.hpa_detected = False
+        self.dco_detected = False
+        self.original_hpa_size = 0
+        self.original_dco_size = 0
+        self.safety_checker = SafetyChecker()
         
     def wipe_device(self, device_path: str, method: str = 'nist', 
                progress_callback: Optional[Callable] = None,
-               device_info: dict = None) -> str:
+               device_info: dict = None,
+               remove_hpa: bool = True,
+               remove_dco: bool = True,
+               force_unsafe: bool = False) -> str:
         """
-        Wipe device using specified method
+        Wipe device using specified method with comprehensive safety checks
+        
+        Args:
+            device_path: Path to the device to wipe
+            method: Wiping method ('nist' or 'dod')
+            progress_callback: Optional callback for progress updates
+            device_info: Additional device information
+            remove_hpa: Whether to detect and remove HPA areas (default: True)
+            remove_dco: Whether to detect and remove DCO areas (default: True)
+            force_unsafe: Override safety checks (DANGEROUS - default: False)
+        
         Returns: Certificate ID for the wipe operation
         """
         start_time = datetime.now()
         
-        # Validate device
+        # CRITICAL SAFETY CHECKS
+        if not force_unsafe:
+            is_safe, safety_reason = self.safety_checker.is_device_safe_to_wipe(device_path)
+            if not is_safe:
+                error_msg = f"SAFETY CHECK FAILED: {safety_reason}"
+                self.logger.error(error_msg)
+                raise ValueError(error_msg)
+            
+            # Additional logging for safety
+            warnings = self.safety_checker.get_safety_warnings(device_path)
+            for warning in warnings:
+                self.logger.warning(warning)
+        else:
+            self.logger.critical("SAFETY CHECKS BYPASSED WITH force_unsafe=True - EXTREMELY DANGEROUS!")
+        
+        # Validate device exists
         if not os.path.exists(device_path):
             raise ValueError(f"Device {device_path} does not exist")
         
