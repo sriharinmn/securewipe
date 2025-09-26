@@ -16,7 +16,7 @@ class SecureWiperGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Secure Data Wiper v2.0 - NIST SP 800-88 Rev. 1 Compliant")
-        self.root.geometry("900x700")
+        self.root.geometry("780x600")
         self.root.resizable(True, True)
         
         self.detector = DeviceDetector()
