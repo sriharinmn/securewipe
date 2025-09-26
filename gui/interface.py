@@ -15,9 +15,26 @@ class SecureWiperGUI:
     
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Secure Data Wiper v2.0 - NIST SP 800-88 Rev. 1 Compliant")
-        self.root.geometry("780x600")
+        self.root.title("Secure Data Wiper v2.0 - Government Compliant")
+        self.root.geometry("1024x768")  # Larger window for better readability
         self.root.resizable(True, True)
+        
+        # Professional government color scheme
+        self.colors = {
+            'primary': '#1e3a8a',      # Navy blue
+            'secondary': '#374151',     # Dark gray
+            'background': '#f3f4f6',    # Light gray background
+            'surface': '#ffffff',       # White surface
+            'accent': '#3b82f6',        # Muted blue
+            'success': '#059669',       # Forest green
+            'warning': '#d97706',       # Amber
+            'danger': '#dc2626',        # Professional red
+            'text': '#111827',          # Dark charcoal
+            'text_secondary': '#6b7280' # Medium gray
+        }
+        
+        # Configure root window background
+        self.root.configure(bg=self.colors['background'])
         
         self.detector = DeviceDetector()
         self.wiper = DataWiper()
@@ -89,13 +106,32 @@ class SecureWiperGUI:
         return self.info_text if hasattr(self, 'info_text') else None
     
     def setup_ui(self):
-        """Setup the enhanced user interface with SSD support"""
-        # Configure styles
+        """Setup the enhanced user interface with government-friendly design"""
+        # Configure professional styles with larger fonts
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure("SSD.TLabel", foreground="blue", font=('Arial', 9, 'bold'))
-        style.configure("HDD.TLabel", foreground="black", font=('Arial', 9))
-        style.configure("Warning.TLabel", foreground="red", font=('Arial', 9, 'bold'))
+        
+        # Professional government styling with larger fonts
+        style.configure("Title.TLabel", foreground=self.colors['primary'], 
+                       font=('Segoe UI', 18, 'bold'), background=self.colors['background'])
+        style.configure("Subtitle.TLabel", foreground=self.colors['text_secondary'], 
+                       font=('Segoe UI', 12, 'italic'), background=self.colors['background'])
+        style.configure("SSD.TLabel", foreground=self.colors['accent'], 
+                       font=('Segoe UI', 11, 'bold'), background=self.colors['background'])
+        style.configure("HDD.TLabel", foreground=self.colors['text'], 
+                       font=('Segoe UI', 11), background=self.colors['background'])
+        style.configure("Warning.TLabel", foreground=self.colors['warning'], 
+                       font=('Segoe UI', 11, 'bold'), background=self.colors['background'])
+        
+        # Button styles
+        style.configure("Primary.TButton", font=('Segoe UI', 12, 'bold'))
+        style.configure("Secondary.TButton", font=('Segoe UI', 11))
+        
+        # Frame styles with professional colors
+        style.configure("Card.TLabelframe", background=self.colors['surface'], 
+                       borderwidth=1, relief='solid')
+        style.configure("Card.TLabelframe.Label", font=('Segoe UI', 12, 'bold'), 
+                       foreground=self.colors['primary'], background=self.colors['surface'])
         
         # Main container with scrollable frame
         self.canvas = tk.Canvas(self.root)
@@ -115,84 +151,98 @@ class SecureWiperGUI:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scrollbar.pack(side="right", fill="y")
         
-        # Main frame inside scrollable area
-        main_frame = ttk.Frame(self.scrollable_frame, padding="10")
+        # Main frame inside scrollable area with increased padding
+        main_frame = ttk.Frame(self.scrollable_frame, padding="30")
         main_frame.pack(fill="both", expand=True)
+        main_frame.configure(style="Card.TFrame")
         
         main_frame.columnconfigure(1, weight=1)
         
-        # Title
-        title_label = ttk.Label(main_frame, text="Secure Data Wiper v2.0", 
-                               font=('Arial', 18, 'bold'))
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 5))
+        # Title with government-friendly styling
+        title_label = ttk.Label(main_frame, text="Government Secure Data Wiper v2.0", 
+                               style="Title.TLabel")
+        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 10))
         
-        subtitle_label = ttk.Label(main_frame, text="NIST SP 800-88 Rev. 1 Compliant with SSD Support", 
-                                 font=('Arial', 10, 'italic'))
-        subtitle_label.grid(row=1, column=0, columnspan=3, pady=(0, 20))
+        subtitle_label = ttk.Label(main_frame, text="Federal Compliance • Advanced Security • Professional Grade", 
+                                 style="Subtitle.TLabel")
+        subtitle_label.grid(row=1, column=0, columnspan=3, pady=(0, 30))
         
-        # Device selection section
-        device_frame = ttk.LabelFrame(main_frame, text="Device Selection", padding="10")
-        device_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        # Device selection section with better spacing
+        device_frame = ttk.LabelFrame(main_frame, text="Step 1: Select Storage Device", 
+                                    padding="20", style="Card.TLabelframe")
+        device_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15)
         device_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(device_frame, text="Select Device:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(device_frame, text="Choose the storage device to securely wipe:", 
+                 font=('Segoe UI', 11)).grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
         
         self.device_var = tk.StringVar()
         self.device_combo = ttk.Combobox(device_frame, textvariable=self.device_var, 
-                                       state="readonly", width=60)
-        self.device_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5, padx=(5, 0))
+                                       state="readonly", width=70, font=('Segoe UI', 11))
+        self.device_combo.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
         
-        refresh_btn = ttk.Button(device_frame, text="Refresh Devices", command=self.refresh_devices)
-        refresh_btn.grid(row=0, column=2, pady=5, padx=(5, 0))
+        refresh_btn = ttk.Button(device_frame, text="Refresh Device List", 
+                               command=self.refresh_devices, style="Secondary.TButton")
+        refresh_btn.grid(row=1, column=2, pady=5, padx=(15, 0), ipadx=10, ipady=5)
         
-        # Device type indicator
-        self.device_type_label = ttk.Label(device_frame, text="", font=('Arial', 10, 'bold'))
-        self.device_type_label.grid(row=1, column=1, sticky=tk.W, pady=5, padx=(5, 0))
+        # Device type indicator with better styling
+        self.device_type_label = ttk.Label(device_frame, text="", font=('Segoe UI', 11, 'bold'))
+        self.device_type_label.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
         
-        # Wipe method selection with SSD awareness
-        method_frame = ttk.LabelFrame(main_frame, text="Wiping Method Selection", padding="10")
-        method_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        # Simplified method selection with plain English
+        method_frame = ttk.LabelFrame(main_frame, text="Step 2: Choose Security Level", 
+                                    padding="20", style="Card.TLabelframe")
+        method_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15)
         
-        ttk.Label(method_frame, text="Available Methods:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(method_frame, text="Select the appropriate security level for your needs:", 
+                 font=('Segoe UI', 11)).grid(row=0, column=0, sticky=tk.W, pady=(0, 15))
         
         self.method_var = tk.StringVar(value="auto")
         
-        # Auto-select method (recommended)
-        self.auto_radio = ttk.Radiobutton(method_frame, text="Auto-Select (Recommended)", 
+        # Simplified method options with clear descriptions
+        self.auto_radio = ttk.Radiobutton(method_frame, 
+                                        text="✓ Recommended (Best method for your device)", 
                                         variable=self.method_var, value="auto",
                                         command=self.update_method_description)
-        self.auto_radio.grid(row=1, column=0, sticky=tk.W, padx=20)
+        self.auto_radio.grid(row=1, column=0, sticky=tk.W, pady=8, padx=10)
         
-        # SSD-specific methods
-        self.crypto_radio = ttk.Radiobutton(method_frame, text="Cryptographic Erasure (SSD Only)", 
+        self.crypto_radio = ttk.Radiobutton(method_frame, 
+                                          text="⚡ Maximum Security (Advanced encryption method)", 
                                           variable=self.method_var, value="crypto_erase",
                                           command=self.update_method_description)
-        self.crypto_radio.grid(row=2, column=0, sticky=tk.W, padx=20)
+        self.crypto_radio.grid(row=2, column=0, sticky=tk.W, pady=8, padx=10)
         
-        self.secure_radio = ttk.Radiobutton(method_frame, text="ATA/NVMe Secure Erase (SSD Only)", 
+        self.secure_radio = ttk.Radiobutton(method_frame, 
+                                          text="🔒 Hardware Secure Erase (Built-in drive security)", 
                                           variable=self.method_var, value="secure_erase",
                                           command=self.update_method_description)
-        self.secure_radio.grid(row=3, column=0, sticky=tk.W, padx=20)
+        self.secure_radio.grid(row=3, column=0, sticky=tk.W, pady=8, padx=10)
         
-        # Traditional methods
-        self.nist_radio = ttk.Radiobutton(method_frame, text="NIST SP 800-88 Overwrite (All Drives)", 
+        self.nist_radio = ttk.Radiobutton(method_frame, 
+                                        text="🏛️ Government Standard (NIST approved method)", 
                                         variable=self.method_var, value="nist",
                                         command=self.update_method_description)
-        self.nist_radio.grid(row=4, column=0, sticky=tk.W, padx=20)
+        self.nist_radio.grid(row=4, column=0, sticky=tk.W, pady=8, padx=10)
         
-        self.dod_radio = ttk.Radiobutton(method_frame, text="DoD 5220.22-M Overwrite (All Drives)", 
+        self.dod_radio = ttk.Radiobutton(method_frame, 
+                                       text="🛡️ Military Standard (Department of Defense method)", 
                                        variable=self.method_var, value="dod",
                                        command=self.update_method_description)
-        self.dod_radio.grid(row=5, column=0, sticky=tk.W, padx=20)
+        self.dod_radio.grid(row=5, column=0, sticky=tk.W, pady=8, padx=10)
         
-        # Method description
-        self.method_desc_label = ttk.Label(method_frame, text="", wraplength=600, 
-                                         font=('Arial', 9), foreground="blue")
-        self.method_desc_label.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+        # Method description with better styling
+        desc_frame = ttk.Frame(method_frame)
+        desc_frame.grid(row=6, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(15, 0))
+        desc_frame.configure(style="Card.TFrame")
         
-        # Device information with enhanced SSD details and improved scrolling
-        info_frame = ttk.LabelFrame(main_frame, text="Device Information & Capabilities", padding="10")
-        info_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        self.method_desc_label = ttk.Label(desc_frame, text="", wraplength=700, 
+                                         font=('Segoe UI', 10), foreground=self.colors['text_secondary'])
+        self.method_desc_label.pack(fill="x", padx=10, pady=10)
+        
+        # Device information with professional styling
+        info_frame = ttk.LabelFrame(main_frame, text="Device Details & Security Information", 
+                                  padding="20", style="Card.TLabelframe")
+        info_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=15)
         info_frame.columnconfigure(0, weight=1)
         info_frame.rowconfigure(0, weight=1)
         
@@ -203,7 +253,8 @@ class SecureWiperGUI:
         text_frame.rowconfigure(0, weight=1)
         
         self.info_text = tk.Text(text_frame, height=12, state=tk.DISABLED, wrap=tk.WORD,
-                                font=('Consolas', 9), bg='#f8f9fa', fg='#333333')
+                                font=('Segoe UI', 10), bg=self.colors['surface'], 
+                                fg=self.colors['text'], borderwidth=1, relief='solid')
         info_scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=self.info_text.yview)
         self.info_text.configure(yscrollcommand=info_scrollbar.set)
         
@@ -219,38 +270,46 @@ class SecureWiperGUI:
         self.info_text.bind("<Button-4>", lambda e: _on_info_text_mousewheel(self._create_wheel_event(e, 120)))
         self.info_text.bind("<Button-5>", lambda e: _on_info_text_mousewheel(self._create_wheel_event(e, -120)))
         
-        # Progress section
-        progress_frame = ttk.LabelFrame(main_frame, text="Wipe Progress", padding="10")
-        progress_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        # Progress section with professional styling
+        progress_frame = ttk.LabelFrame(main_frame, text="Operation Status", 
+                                      padding="20", style="Card.TLabelframe")
+        progress_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=15)
         progress_frame.columnconfigure(0, weight=1)
         
-        self.progress = ttk.Progressbar(progress_frame, length=500, mode='determinate')
-        self.progress.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
+        self.progress = ttk.Progressbar(progress_frame, length=600, mode='determinate', 
+                                      style="TProgressbar")
+        self.progress.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=10)
         
-        self.progress_label = ttk.Label(progress_frame, text="Ready to start secure wiping")
-        self.progress_label.grid(row=1, column=0, pady=5)
+        self.progress_label = ttk.Label(progress_frame, text="Ready to begin secure data wiping", 
+                                      font=('Segoe UI', 11))
+        self.progress_label.grid(row=1, column=0, pady=(0, 10))
         
-        # Control buttons
+        # Control buttons with better spacing and styling
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=6, column=0, columnspan=3, pady=20)
+        button_frame.grid(row=6, column=0, columnspan=3, pady=30)
         
-        self.wipe_btn = ttk.Button(button_frame, text="Start Secure Wipe", 
-                                 command=self.start_wipe)
-        self.wipe_btn.pack(side=tk.LEFT, padx=5)
+        self.wipe_btn = ttk.Button(button_frame, text="🔥 Start Secure Wipe", 
+                                 command=self.start_wipe, style="Primary.TButton")
+        self.wipe_btn.pack(side=tk.LEFT, padx=10, ipadx=20, ipady=8)
         
-        self.verify_btn = ttk.Button(button_frame, text="Verify Certificate", 
-                                   command=self.verify_certificate)
-        self.verify_btn.pack(side=tk.LEFT, padx=5)
+        self.verify_btn = ttk.Button(button_frame, text="📋 Verify Certificate", 
+                                   command=self.verify_certificate, style="Secondary.TButton")
+        self.verify_btn.pack(side=tk.LEFT, padx=10, ipadx=15, ipady=8)
         
-        self.create_test_btn = ttk.Button(button_frame, text="Create Test Files", 
-                                        command=self.create_test_files)
-        self.create_test_btn.pack(side=tk.LEFT, padx=5)
+        self.create_test_btn = ttk.Button(button_frame, text="🧪 Create Test Files", 
+                                        command=self.create_test_files, style="Secondary.TButton")
+        self.create_test_btn.pack(side=tk.LEFT, padx=10, ipadx=15, ipady=8)
         
-        self.quit_btn = ttk.Button(button_frame, text="Exit", command=self.root.quit)
-        self.quit_btn.pack(side=tk.LEFT, padx=5)
+        self.quit_btn = ttk.Button(button_frame, text="Exit Application", 
+                                 command=self.root.quit, style="Secondary.TButton")
+        self.quit_btn.pack(side=tk.LEFT, padx=10, ipadx=15, ipady=8)
         
-        # Bind events
+        # Bind events and add tooltips for accessibility
         self.device_combo.bind('<<ComboboxSelected>>', self.on_device_selected)
+        self.add_tooltips()
+        
+        # Improve keyboard navigation
+        self.setup_keyboard_navigation()
         
         # Add scroll wheel support to canvas
         def _on_canvas_mousewheel(event):
@@ -262,6 +321,85 @@ class SecureWiperGUI:
         
         # Allow canvas to receive focus for scrolling
         self.canvas.focus_set()
+    
+    def add_tooltips(self):
+        """Add helpful tooltips for better user experience"""
+        try:
+            # Create tooltip function
+            def create_tooltip(widget, text):
+                def show_tooltip(event):
+                    tooltip = tk.Toplevel()
+                    tooltip.wm_overrideredirect(True)
+                    tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
+                    tooltip.configure(bg=self.colors['text'], relief='solid', borderwidth=1)
+                    
+                    label = tk.Label(tooltip, text=text, font=('Segoe UI', 9),
+                                   bg=self.colors['text'], fg=self.colors['surface'], 
+                                   wraplength=300, justify='left', padx=5, pady=3)
+                    label.pack()
+                    
+                    # Store tooltip reference
+                    widget.tooltip = tooltip
+                    
+                def hide_tooltip(event):
+                    if hasattr(widget, 'tooltip'):
+                        widget.tooltip.destroy()
+                        del widget.tooltip
+                
+                widget.bind('<Enter>', show_tooltip)
+                widget.bind('<Leave>', hide_tooltip)
+            
+            # Add tooltips to key elements
+            create_tooltip(self.device_combo, "Select the storage device you want to securely wipe. All data on this device will be permanently destroyed.")
+            create_tooltip(self.wipe_btn, "Start the secure wiping process. This action cannot be undone - make sure you have selected the correct device!")
+            create_tooltip(self.verify_btn, "Verify the authenticity of a wipe certificate to confirm that data was properly destroyed.")
+            create_tooltip(self.create_test_btn, "Create safe test files that you can practice wiping without risking real data.")
+            
+        except Exception as e:
+            # Tooltips are optional - continue if they fail
+            pass
+    
+    def setup_keyboard_navigation(self):
+        """Setup keyboard navigation for accessibility"""
+        def on_tab_navigation(event):
+            # Improve tab order for keyboard users
+            widget = event.widget
+            if widget == self.device_combo:
+                self.auto_radio.focus_set()
+                return "break"
+        
+        # Enhanced keyboard shortcuts
+        self.root.bind('<F1>', lambda e: self.show_help_dialog())
+        self.root.bind('<Control-r>', lambda e: self.refresh_devices())
+        self.root.bind('<Escape>', lambda e: self.root.quit())
+    
+    def show_help_dialog(self):
+        """Show help dialog for users"""
+        help_text = """SECURE WIPER HELP
+
+KEYBOARD SHORTCUTS:
+• F1: Show this help
+• Ctrl+R: Refresh device list
+• Tab: Navigate between elements
+• Escape: Exit application
+• Arrow keys: Scroll information area
+
+SECURITY LEVELS EXPLAINED:
+• Recommended: Best method for your device type
+• Maximum Security: Advanced encryption destruction
+• Hardware Secure: Uses built-in drive security
+• Government Standard: NIST approved method
+• Military Standard: DoD 3-pass method
+
+SAFETY REMINDERS:
+• Always backup important data first
+• Double-check device selection
+• Process cannot be undone
+• Keep certificates as legal proof
+
+For technical support, contact your IT administrator."""
+        
+        messagebox.showinfo("Help - Secure Data Wiper", help_text)
     
     def refresh_devices(self):
         """Refresh the list of available devices with SSD detection"""
@@ -303,12 +441,13 @@ class SecureWiperGUI:
             is_ssd = device.get('is_ssd', False)
             is_nvme = device.get('is_nvme', False)
             
-            # Update device type indicator
+            # Update device type indicator with professional styling
             if is_ssd:
-                device_type_text = f"{'NVMe SSD' if is_nvme else 'SATA SSD'} - Optimized methods available"
+                device_type_text = f"✅ {('High-Speed NVMe SSD' if is_nvme else 'SATA SSD')} - Advanced security methods available"
                 self.device_type_label.config(text=device_type_text, style="SSD.TLabel")
             else:
-                self.device_type_label.config(text="HDD - Traditional overwrite methods", style="HDD.TLabel")
+                device_type_text = "💽 Traditional Hard Drive - Government/Military standard methods recommended"
+                self.device_type_label.config(text=device_type_text, style="HDD.TLabel")
             
             # Enable/disable method options based on device type
             self.update_method_options(device)
@@ -354,78 +493,99 @@ class SecureWiperGUI:
         is_ssd = device.get('is_ssd', False)
         is_nvme = device.get('is_nvme', False)
         
-        info_text = f"""DEVICE INFORMATION:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        info_text = f"""SELECTED DEVICE INFORMATION
+═══════════════════════════════════════════════════════════════════════════════
 
-Device Path: {device['path']}
-Device Name: {device['name']}
-Model: {device['model']}
-Size: {device['size']}
-Type: {device.get('type', 'Unknown')}
-Mounted: {'Yes' if device.get('mounted', False) else 'No'}
+📍 Device Location: {device['path']}
+💾 Device Name: {device['name']}
+🏷️ Model: {device['model']}
+📏 Capacity: {device['size']}
+🔧 Type: {device.get('type', 'Unknown')}
+🔗 Status: {'Currently Mounted' if device.get('mounted', False) else 'Not Mounted'}
 
-STORAGE TECHNOLOGY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STORAGE TECHNOLOGY DETAILS
+═══════════════════════════════════════════════════════════════════════════════
 
-Storage Type: {'SSD (Solid State Drive)' if is_ssd else 'HDD (Hard Disk Drive)'}
-Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}
+💽 Technology: {'Solid State Drive (SSD) - Modern flash storage' if is_ssd else 'Hard Disk Drive (HDD) - Traditional magnetic storage'}
+🔌 Interface: {'NVMe (High-speed interface)' if is_nvme else ('SATA SSD (Standard interface)' if is_ssd else 'SATA/IDE (Standard interface)')}
 
-SSD CAPABILITIES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECURITY CAPABILITIES
+═══════════════════════════════════════════════════════════════════════════════
 """
 
         if is_ssd:
+            crypto_support = "✅ Available" if device.get('supports_crypto_erase', False) else "❌ Not Available"
+            secure_support = "✅ Available" if device.get('supports_secure_erase', False) else "❌ Not Available"
+            recommended = device.get('recommended_method', 'nist').upper()
+            
             info_text += f"""
-Cryptographic Erasure Support: {'✓ Yes' if device.get('supports_crypto_erase', False) else '✗ No'}
-Secure Erase Support: {'✓ Yes' if device.get('supports_secure_erase', False) else '✗ No'}
-Recommended Method: {device.get('recommended_method', 'nist').upper()}
+🔐 Advanced Encryption Wipe: {crypto_support}
+🛡️ Hardware Secure Erase: {secure_support}
+⭐ Recommended Method: {recommended}
 
-WHY SSD METHODS ARE BETTER:
-• Cryptographic Erasure: Instantly destroys encryption keys, making data unrecoverable
-• Secure Erase: Hardware-level erasure including spare blocks and wear-leveled areas
-• Traditional overwrite methods may not reach all NAND cells due to wear leveling
+WHY SOLID STATE DRIVES ARE DIFFERENT:
+• Uses electronic flash memory instead of magnetic storage
+• Data can be hidden in spare areas that normal overwriting cannot reach
+• Advanced methods can instantly destroy encryption keys
+• Hardware-level commands can reach all storage areas including hidden ones
+• Modern SSDs include built-in security features for complete data destruction
 """
         else:
             info_text += """
-This is a traditional hard disk drive (HDD).
-• Uses magnetic storage technology
-• Data is stored on spinning platters
-• Overwrite methods are effective for complete data destruction
-• Recommended methods: NIST SP 800-88 or DoD 5220.22-M
+🔐 Advanced Encryption Wipe: ❌ Not Available (HDD technology)
+🛡️ Hardware Secure Erase: ❌ Not Available (HDD technology)
+⭐ Recommended Method: Government or Military Standard
+
+TRADITIONAL HARD DISK DRIVE INFORMATION:
+• Uses magnetic storage on spinning metal platters
+• Data is written in tracks and sectors on the disk surface
+• Overwrite methods are very effective for complete data destruction
+• Government and Military standard methods provide thorough security
+• Physical overwriting reaches all data storage areas
 """
+
+        method_display = {
+            'auto': 'Automatic (Recommended)',
+            'crypto_erase': 'Advanced Encryption Method',
+            'secure_erase': 'Hardware Secure Erase', 
+            'nist': 'Government Standard',
+            'dod': 'Military Standard'
+        }.get(self.method_var.get(), self.method_var.get().upper())
 
         info_text += f"""
 
-SELECTED WIPING METHOD:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SELECTED SECURITY METHOD
+═══════════════════════════════════════════════════════════════════════════════
 
-Current Selection: {self.method_var.get().upper()}
+🎯 Current Selection: {method_display}
 
-⚠️  IMPORTANT WARNINGS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  IMPORTANT SAFETY INFORMATION
+═══════════════════════════════════════════════════════════════════════════════
 
-🔴 This operation will PERMANENTLY DESTROY all data on the selected device
-🔴 Data recovery will be impossible after the wipe process completes
-🔴 Ensure you have backups of any important data before proceeding
-🔴 Verify you have selected the correct device - mistakes cannot be undone
-🔴 The process may take several hours depending on device size and method
+� This operation will PERMANENTLY AND IRREVERSIBLY destroy all data
+� Data recovery will be completely impossible after the process finishes
+� Please ensure you have backed up any important files before continuing
+� Double-check that you have selected the correct storage device
+� The wiping process may take several hours to complete
 
-COMPLIANCE STANDARDS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FEDERAL COMPLIANCE & STANDARDS
+═══════════════════════════════════════════════════════════════════════════════
 
-• NIST SP 800-88 Rev. 1: Guidelines for Media Sanitization
-• DoD 5220.22-M: Department of Defense standard
-• Common Criteria Protection Profiles
-• Federal Information Processing Standards (FIPS)
+✅ NIST SP 800-88 Rev. 1: Federal Guidelines for Media Sanitization
+✅ DoD 5220.22-M: Department of Defense Security Standard
+✅ Common Criteria Protection Profiles: International Security Standards
+✅ FIPS 140-2: Federal Information Processing Standards
 
-💡 TIP: Use mouse wheel to scroll through this information area
+📝 Legal certificates will be generated as proof of secure data destruction
+
+💡 NAVIGATION TIP: Use your mouse wheel or arrow keys to scroll through this information
 """
         
         self.info_text.insert(1.0, info_text)
         self.info_text.config(state=tk.DISABLED)
     
     def update_method_description(self):
-        """Update method description based on selected method and device"""
+        """Update method description with user-friendly language"""
         if not self.selected_device:
             return
             
@@ -433,30 +593,42 @@ COMPLIANCE STANDARDS:
         is_ssd = self.selected_device.get('is_ssd', False)
         
         descriptions = {
-            'auto': f"Automatically selects the best method for your {'SSD' if is_ssd else 'HDD'}. " +
-                   f"{'Cryptographic erasure for SSDs with encryption support, secure erase for other SSDs' if is_ssd else 'NIST SP 800-88 overwrite for HDDs'}.",
+            'auto': f"The system will automatically choose the best wiping method for your device type. " +
+                   f"For {'solid-state drives, this typically uses advanced encryption methods' if is_ssd else 'traditional hard drives, this uses proven overwrite techniques'}. " +
+                   "This is the recommended option for most users.",
             
-            'crypto_erase': "Cryptographic Erasure: Destroys the encryption key, making all data instantly unrecoverable. " +
-                           "Fastest and most secure method for SSDs. NIST SP 800-88 Rev. 1 compliant.",
+            'crypto_erase': "Uses advanced encryption key destruction to instantly make all data unrecoverable. " +
+                           "This is the fastest and most secure method for modern storage devices. " +
+                           "Meets all federal security standards.",
             
-            'secure_erase': "ATA/NVMe Secure Erase: Hardware-level command that erases all user data including " +
-                           "spare blocks and remapped sectors. NIST SP 800-88 Rev. 1 compliant.",
+            'secure_erase': "Uses your device's built-in security features to completely wipe all data, " +
+                           "including hidden areas that normal methods might miss. " +
+                           "This method is built into the hardware itself.",
             
-            'nist': "NIST SP 800-88 Overwrite: Single pass with fixed pattern followed by verification. " +
-                   "Suitable for HDDs and SSDs. Government standard for non-classified data.",
+            'nist': "Uses the government-approved overwrite method that meets federal standards. " +
+                   "Writes a specific pattern over all data once, then verifies the process. " +
+                   "Suitable for most government and business use.",
             
-            'dod': "DoD 5220.22-M: Three-pass overwrite (zeros, ones, random). Traditional method " +
-                  "required by some organizations. Works on all drive types."
+            'dod': "Uses the military-grade wiping method with three complete overwrites using " +
+                  "different patterns. Takes longer but provides extra assurance. " +
+                  "Required by some high-security organizations."
         }
         
         desc = descriptions.get(method, "")
         
-        # Add warnings for inappropriate method selections
+        # Add helpful guidance
         if method in ['crypto_erase', 'secure_erase'] and not is_ssd:
-            desc += "\n⚠️ This method is only available for SSDs. Please select a different method."
+            desc = "⚠️ This security method is only available for solid-state drives (SSDs). " + \
+                  "Your device appears to be a traditional hard drive. Please select the Government Standard or Military Standard option instead."
         elif method == 'auto':
             recommended = self.selected_device.get('recommended_method', 'nist')
-            desc += f"\n→ Auto-selected method: {recommended.upper()}"
+            method_names = {
+                'crypto_erase': 'Advanced Encryption Method',
+                'secure_erase': 'Hardware Secure Erase',
+                'nist': 'Government Standard',
+                'dod': 'Military Standard'
+            }
+            desc += f"\n\n✓ Recommended for your device: {method_names.get(recommended, 'Government Standard')}"
         
         self.method_desc_label.config(text=desc)
     
