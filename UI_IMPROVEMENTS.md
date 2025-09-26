@@ -25,7 +25,7 @@ This document outlines the comprehensive UI improvements made to the SecureWipe 
 - Small 9pt fonts
 - Arial font family
 - Poor contrast in some areas
-
+`
 **AFTER:**
 - **Larger fonts:** 11-12pt minimum, 18pt for titles
 - **Modern font:** Segoe UI (system font) for better readability
