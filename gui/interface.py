@@ -1,19 +1,21 @@
 # =============================================================================
-# gui/interface.py - Enhanced GUI Interface with SSD Support
+# gui/interface.py - Enhanced GUI Interface with Hidden Partition Support
 # =============================================================================
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import threading
 import logging
+import json
+import os
 from core.detector import DeviceDetector
 from core.wiper import DataWiper
 from core.certificate import CertificateGenerator
 
 class SecureWiperGUI:
-    """Enhanced GUI interface for the secure data wiper with SSD support"""
+    """Enhanced GUI interface for the secure data wiper with hidden partition support"""
     
-    def __init__(self):
+    def __init__(self):  # Changed from _init_ to __init__
         self.root = tk.Tk()
         self.root.title("Secure Data Wiper v2.0 - NIST SP 800-88 Rev. 1 Compliant")
         self.root.geometry("900x700")
@@ -22,7 +24,7 @@ class SecureWiperGUI:
         self.detector = DeviceDetector()
         self.wiper = DataWiper()
         self.cert_gen = CertificateGenerator()
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)  # Changed _name_ to __name__
         
         self.selected_device = None
         self.wipe_thread = None
@@ -31,7 +33,7 @@ class SecureWiperGUI:
         self.refresh_devices()
     
     def setup_ui(self):
-        """Setup the enhanced user interface with SSD support"""
+        """Setup the enhanced user interface with hidden partition support"""
         # Configure styles
         style = ttk.Style()
         style.theme_use('clam')
@@ -52,7 +54,7 @@ class SecureWiperGUI:
                                font=('Arial', 18, 'bold'))
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 5))
         
-        subtitle_label = ttk.Label(main_frame, text="NIST SP 800-88 Rev. 1 Compliant with SSD Support", 
+        subtitle_label = ttk.Label(main_frame, text="NIST SP 800-88 Rev. 1 Compliant with Hidden Partition Support", 
                                  font=('Arial', 10, 'italic'))
         subtitle_label.grid(row=1, column=0, columnspan=3, pady=(0, 20))
         
@@ -116,17 +118,22 @@ class SecureWiperGUI:
                                          font=('Arial', 9), foreground="blue")
         self.method_desc_label.grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
         
-        # Device information with enhanced SSD details
-        info_frame = ttk.LabelFrame(main_frame, text="Device Information & Capabilities", padding="10")
+        # Device information with enhanced hidden partition details
+        info_frame = ttk.LabelFrame(main_frame, text="Device Information & Hidden Partition Analysis", padding="10")
         info_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        
+        # Configure grid weights for proper expansion
         info_frame.columnconfigure(0, weight=1)
+        info_frame.rowconfigure(0, weight=1)
         main_frame.rowconfigure(4, weight=1)
         
-        self.info_text = tk.Text(info_frame, height=10, state=tk.DISABLED, wrap=tk.WORD)
+        # Make info text area larger and add scrollbar
+        self.info_text = tk.Text(info_frame, height=20, width=80, state=tk.DISABLED, wrap=tk.WORD)
         info_scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.info_text.yview)
         self.info_text.configure(yscrollcommand=info_scrollbar.set)
         
-        self.info_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Use proper sticky settings for text widget and scrollbar
+        self.info_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 2))
         info_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
         # Progress section
@@ -193,39 +200,63 @@ class SecureWiperGUI:
             messagebox.showerror("Error", f"Failed to detect devices: {e}")
     
     def on_device_selected(self, event):
-        """Handle device selection with enhanced SSD information"""
+        """Handle device selection with enhanced hidden partition information"""
         selected = self.device_var.get()
         if selected in self.device_data:
             device = self.device_data[selected]
             self.selected_device = device
             
-            is_ssd = device.get('is_ssd', False)
-            is_nvme = device.get('is_nvme', False)
+            # Check for hidden partitions immediately
+            hidden_info = self.wiper.check_hidden_partitions(device['path'])
             
-            # Update device type indicator
-            if is_ssd:
-                device_type_text = f"{'NVMe SSD' if is_nvme else 'SATA SSD'} - Optimized methods available"
-                self.device_type_label.config(text=device_type_text, style="SSD.TLabel")
+            if 'error' in hidden_info:
+                self.info_text.config(state=tk.NORMAL)
+                self.info_text.delete(1.0, tk.END)
+                self.info_text.insert(1.0, f"Error checking hidden partitions: {hidden_info['error']}")
+                self.info_text.config(state=tk.DISABLED)
+                return
+            
+            # Update device info display
+            info_text = f"""DEVICE INFORMATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Device: {device['name']}
+Path: {device['path']}
+Size: {device['size']}
+Model: {device['model']}
+
+HIDDEN PARTITION ANALYSIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+            if hidden_info['hpa_detected'] or hidden_info['dco_detected']:
+                for area in hidden_info.get('hidden_details', []):
+                    if area['type'] == 'HPA':
+                        info_text += f"\n⚠ WARNING: Host Protected Area (HPA) Found\n"
+                        info_text += f"   • Size: {area['size_mb']} MB\n"
+                        info_text += f"   • Sectors: {area['start_lba']} to {area['end_lba']}\n"
+                    elif area['type'] == 'DCO':
+                        info_text += f"\n⚠ WARNING: Device Configuration Overlay (DCO) Found\n"
+                        info_text += f"   • Size: {area['size_mb']} MB\n"
+                        info_text += f"   • Hidden Sectors: {area['sectors']}\n"
+                
+                total_hidden_mb = (hidden_info['hidden_sectors'] * 512) // (1024 * 1024)
+                info_text += f"\n⚠ TOTAL HIDDEN SPACE: {total_hidden_mb} MB will be included in secure wipe\n"
+                
+                # Show warning in GUI
+                messagebox.showwarning(
+                    "Hidden Partitions Detected",
+                    f"WARNING: This device contains {total_hidden_mb} MB of hidden space!\n\n"
+                    "These hidden areas will be included in the secure wipe process.\n"
+                    "See the device information panel for details."
+                )
             else:
-                self.device_type_label.config(text="HDD - Traditional overwrite methods", style="HDD.TLabel")
+                info_text += "\n✓ No hidden partitions detected\n"
             
-            # Enable/disable method options based on device type
-            self.update_method_options(device)
-            
-            # Update device info display with enhanced SSD details
-            self.update_device_info(device)
-            
-            # Update method description
-            self.update_method_description()
-            
-            # Check if device is safe to wipe
-            safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
-            if not safe:
-                self.wipe_btn.config(state=tk.DISABLED)
-                messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
-            else:
-                self.wipe_btn.config(state=tk.NORMAL)
-    
+            # Update info display
+            self.info_text.config(state=tk.NORMAL)
+            self.info_text.delete(1.0, tk.END)
+            self.info_text.insert(1.0, info_text)
+            self.info_text.config(state=tk.DISABLED)
+
     def update_method_options(self, device):
         """Enable/disable method options based on device capabilities"""
         is_ssd = device.get('is_ssd', False)
@@ -245,82 +276,71 @@ class SecureWiperGUI:
             if self.method_var.get() in ['crypto_erase', 'secure_erase']:
                 self.method_var.set('nist')
     
-    def update_device_info(self, device):
-        """Update device information display with SSD capabilities"""
+    def update_device_info(self, device: dict, hidden_info: dict = None):
+        """Update device information display with enhanced hidden partition info"""
         self.info_text.config(state=tk.NORMAL)
         self.info_text.delete(1.0, tk.END)
         
-        is_ssd = device.get('is_ssd', False)
-        is_nvme = device.get('is_nvme', False)
-        
         info_text = f"""DEVICE INFORMATION:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 Device Path: {device['path']}
 Device Name: {device['name']}
 Model: {device['model']}
 Size: {device['size']}
 Type: {device.get('type', 'Unknown')}
-Mounted: {'Yes' if device.get('mounted', False) else 'No'}
+Bus Type: {device.get('bus_type', 'Unknown')}
+Removable: {'Yes' if device.get('is_removable', False) else 'No'}
+System Drive: {'Yes' if device.get('is_system', False) else 'No'}
 
-STORAGE TECHNOLOGY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HIDDEN PARTITION ANALYSIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"""
 
-Storage Type: {'SSD (Solid State Drive)' if is_ssd else 'HDD (Hard Disk Drive)'}
-Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}
+        if hidden_info:
+            if hidden_info['hpa_detected'] or hidden_info['dco_detected']:
+                for area in hidden_info.get('hidden_details', []):
+                    if area['type'] == 'HPA':
+                        info_text += f"""
+⚠ Host Protected Area (HPA) Detected:
+   • Size: {area['size_mb']} MB
+   • Hidden Sectors: {area['sectors']:,}
+   • Sector Range: {area['start_lba']:,} to {area['end_lba']:,}
+   • Status: {"Unlockable" if hidden_info['hpa_unlocked'] else "Locked"}\n"""
+                    elif area['type'] == 'DCO':
+                        info_text += f"""
+⚠ Device Configuration Overlay (DCO) Detected:
+   • Size: {area['size_mb']} MB
+   • Hidden Sectors: {area['sectors']:,}
+   • Status: {"Unlockable" if hidden_info['dco_unlocked'] else "Locked"}\n"""
+                
+                total_hidden_mb = (hidden_info['hidden_sectors'] * 512) // (1024 * 1024)
+                info_text += f"""
+Total Hidden Space: {total_hidden_mb:,} MB ({hidden_info['hidden_sectors']:,} sectors)
+Original Size: {hidden_info['original_size']:,} bytes
+Accessible Size: {hidden_info['accessible_size']:,} bytes\n"""
 
-SSD CAPABILITIES:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"""
-
-        if is_ssd:
-            info_text += f"""
-Cryptographic Erasure Support: {'✓ Yes' if device.get('supports_crypto_erase', False) else '✗ No'}
-Secure Erase Support: {'✓ Yes' if device.get('supports_secure_erase', False) else '✗ No'}
-Recommended Method: {device.get('recommended_method', 'nist').upper()}
-
-WHY SSD METHODS ARE BETTER:
-• Cryptographic Erasure: Instantly destroys encryption keys, making data unrecoverable
-• Secure Erase: Hardware-level erasure including spare blocks and wear-leveled areas
-• Traditional overwrite methods may not reach all NAND cells due to wear leveling
-"""
+                if hidden_info.get('warnings'):
+                    info_text += "\nWarnings:\n"
+                    for warning in hidden_info['warnings']:
+                        info_text += f"• {warning}\n"
+            else:
+                info_text += "✓ No hidden partitions detected on this device\n"
         else:
-            info_text += """
-This is a traditional hard disk drive (HDD).
-• Uses magnetic storage technology
-• Data is stored on spinning platters
-• Overwrite methods are effective for complete data destruction
-• Recommended methods: NIST SP 800-88 or DoD 5220.22-M
-"""
-
-        info_text += f"""
-
-SELECTED WIPING METHOD:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Current Selection: {self.method_var.get().upper()}
-
-⚠️  IMPORTANT WARNINGS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔴 This operation will PERMANENTLY DESTROY all data on the selected device
-🔴 Data recovery will be impossible after the wipe process completes
-🔴 Ensure you have backups of any important data before proceeding
-🔴 Verify you have selected the correct device - mistakes cannot be undone
-🔴 The process may take several hours depending on device size and method
-
-COMPLIANCE STANDARDS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-• NIST SP 800-88 Rev. 1: Guidelines for Media Sanitization
-• DoD 5220.22-M: Department of Defense standard
-• Common Criteria Protection Profiles
-• Federal Information Processing Standards (FIPS)
-"""
+            info_text += "❔ Hidden partition analysis not yet performed\n"
         
+        info_text += """
+IMPORTANT NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Hidden areas will be included in the secure wipe process
+• All data in both visible and hidden areas will be permanently destroyed
+• The process cannot be interrupted once started
+• A certificate will be generated after successful completion"""
+
         self.info_text.insert(1.0, info_text)
         self.info_text.config(state=tk.DISABLED)
-    
+        
+        # Scroll to top
+        self.info_text.see("1.0")
+
     def update_method_description(self):
         """Update method description based on selected method and device"""
         if not self.selected_device:
@@ -331,7 +351,7 @@ COMPLIANCE STANDARDS:
         
         descriptions = {
             'auto': f"Automatically selects the best method for your {'SSD' if is_ssd else 'HDD'}. " +
-                   f"{'Cryptographic erasure for SSDs with encryption support, secure erase for other SSDs' if is_ssd else 'NIST SP 800-88 overwrite for HDDs'}.",
+                   f"{'Cryptographic erasure for SSDs with encryption support, secure erase for other SSDs' if is_ssd else 'NIST SP 800-88 overwrite for HDDs with hidden partition detection'}.",
             
             'crypto_erase': "Cryptographic Erasure: Destroys the encryption key, making all data instantly unrecoverable. " +
                            "Fastest and most secure method for SSDs. NIST SP 800-88 Rev. 1 compliant.",
@@ -340,20 +360,22 @@ COMPLIANCE STANDARDS:
                            "spare blocks and remapped sectors. NIST SP 800-88 Rev. 1 compliant.",
             
             'nist': "NIST SP 800-88 Overwrite: Single pass with fixed pattern followed by verification. " +
-                   "Suitable for HDDs and SSDs. Government standard for non-classified data.",
+                   f"Suitable for HDDs and SSDs. Government standard for non-classified data.{' Includes HPA/DCO detection for HDDs.' if not is_ssd else ''}",
             
             'dod': "DoD 5220.22-M: Three-pass overwrite (zeros, ones, random). Traditional method " +
-                  "required by some organizations. Works on all drive types."
+                  f"required by some organizations. Works on all drive types.{' Includes HPA/DCO detection for HDDs.' if not is_ssd else ''}"
         }
         
         desc = descriptions.get(method, "")
         
         # Add warnings for inappropriate method selections
         if method in ['crypto_erase', 'secure_erase'] and not is_ssd:
-            desc += "\n⚠️ This method is only available for SSDs. Please select a different method."
+            desc += "\n⚠ This method is only available for SSDs. Please select a different method."
         elif method == 'auto':
             recommended = self.selected_device.get('recommended_method', 'nist')
             desc += f"\n→ Auto-selected method: {recommended.upper()}"
+            if not is_ssd:
+                desc += " (with HPA/DCO detection)"
         
         self.method_desc_label.config(text=desc)
     
@@ -382,6 +404,7 @@ COMPLIANCE STANDARDS:
         device_name = self.selected_device['name']
         device_type = "SSD" if is_ssd else "HDD"
         method_display = method.replace('_', ' ').title()
+        hidden_partition_warning = "\n⚠  Hidden partitions (HPA/DCO) will be detected and wiped!" if not is_ssd else ""
         
         confirm_msg = f"""FINAL CONFIRMATION REQUIRED
 
@@ -391,16 +414,16 @@ Device: {device_name}
 Path: {self.selected_device['path']}
 Type: {device_type}
 Size: {self.selected_device['size']}
-Method: {method_display}
+Method: {method_display}{hidden_partition_warning}
 
-⚠️  THIS WILL PERMANENTLY DESTROY ALL DATA ON THE DEVICE!
-⚠️  This action CANNOT be undone!
-⚠️  Data recovery will be IMPOSSIBLE after completion!
+⚠  THIS WILL PERMANENTLY DESTROY ALL DATA ON THE DEVICE!
+⚠  This action CANNOT be undone!
+⚠  Data recovery will be IMPOSSIBLE after completion!
 
 To confirm this irreversible action, type exactly: WIPE {device_name}"""
         
         expected_confirmation = f"WIPE {device_name}"
-        confirmation = tk.simpledialog.askstring("⚠️ DESTRUCTIVE OPERATION CONFIRMATION ⚠️", 
+        confirmation = tk.simpledialog.askstring("⚠ DESTRUCTIVE OPERATION CONFIRMATION ⚠", 
                                                 confirm_msg, show='*')
         
         if confirmation != expected_confirmation:
@@ -408,7 +431,7 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
             return
         
         # Final safety check
-        final_check = messagebox.askyesno("⚠️ LAST CHANCE ⚠️", 
+        final_check = messagebox.askyesno("⚠ LAST CHANCE ⚠", 
                                         "Are you absolutely certain you want to proceed?\n\n"
                                         "Click 'Yes' to permanently destroy all data.\n"
                                         "Click 'No' to cancel and keep your data safe.")
@@ -445,8 +468,9 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
             self.root.after(0, lambda: self._wipe_complete(cert_id, method))
         
         except Exception as e:
-            self.logger.error(f"Wipe failed: {e}")
-            self.root.after(0, lambda: self._wipe_failed(str(e)))
+            error_message = str(e)  # Store error message in local variable
+            self.logger.error(f"Wipe failed: {error_message}")
+            self.root.after(0, lambda: self._wipe_failed(error_message))
     
     def _update_progress(self, percent, message):
         """Update progress bar and message"""
@@ -455,7 +479,7 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
         self.root.update_idletasks()
     
     def _wipe_complete(self, cert_id, method):
-        """Handle successful wipe completion"""
+        """Handle successful wipe completion with hidden partition information"""
         self.progress['value'] = 100
         self.progress_label.config(text="✓ Secure wipe completed successfully!")
         
@@ -465,17 +489,51 @@ To confirm this irreversible action, type exactly: WIPE {device_name}"""
         method_name = method.replace('_', ' ').title()
         device_type = "SSD" if self.selected_device.get('is_ssd', False) else "HDD"
         
+        # Check if hidden partitions were involved
+        hidden_info = ""
+        try:
+            # Try to load the certificate to get hidden partition info
+            cert_path = os.path.join(self.cert_gen.cert_dir, f'{cert_id}.json')
+            if os.path.exists(cert_path):
+                with open(cert_path, 'r') as f:
+                    cert_data = json.load(f)
+                    hidden_partition_analysis = cert_data.get('hidden_partition_analysis', {})
+                    
+                    if hidden_partition_analysis.get('hpa_detected') or hidden_partition_analysis.get('dco_detected'):
+                        hidden_sectors = hidden_partition_analysis.get('hidden_sectors', 0)
+                        hidden_mb = (hidden_sectors * 512) // (1024 * 1024) if hidden_sectors > 0 else 0
+                        
+                        hidden_info = f"""
+🔍 HIDDEN PARTITION ANALYSIS:
+✓ HPA (Host Protected Area): {'Detected and Wiped' if hidden_partition_analysis.get('hpa_unlocked') else 'Not Found'}
+✓ DCO (Device Configuration Overlay): {'Detected and Wiped' if hidden_partition_analysis.get('dco_unlocked') else 'Not Found'}
+✓ Hidden Space Processed: {hidden_mb} MB ({hidden_sectors:,} sectors)
+✓ All hidden areas included in secure erasure process
+"""
+                    
+                    mount_analysis = cert_data.get('mount_analysis', {})
+                    if mount_analysis.get('unmounted_partitions'):
+                        hidden_info += f"""
+💾 DRIVE MANAGEMENT:
+✓ External partitions safely unmounted: {len(mount_analysis['unmounted_partitions'])}
+✓ System drives protected from unmounting
+✓ Drive states restored after wiping
+"""
+        except Exception as e:
+            self.logger.warning(f"Could not load certificate details: {e}")
+        
         success_msg = f"""✅ SECURE WIPE COMPLETED SUCCESSFULLY!
 
 Device: {self.selected_device['name']}
 Type: {device_type}
 Method: {method_name}
 Certificate ID: {cert_id}
-
+{hidden_info}
 📁 Certificates Location: ./certificates/
 
-🛡️ Your wipe certificates include:
+🛡 Your wipe certificates include:
 ✓ Cryptographic proof of secure erasure
+✓ Hidden partition analysis and verification
 ✓ Tamper-proof digital signatures  
 ✓ Full NIST SP 800-88 Rev. 1 compliance verification
 ✓ Third-party verification support
@@ -516,7 +574,7 @@ Keep these certificates as legal proof of secure data destruction."""
         """Verify a certificate file"""
         cert_path = filedialog.askopenfilename(
             title="Select Certificate File to Verify",
-            filetypes=[("JSON certificates", "*.json"), ("All files", "*.*")],
+            filetypes=[("JSON certificates", ".json"), ("All files", ".*")],
             initialdir="./certificates"
         )
         

@@ -1,6 +1,5 @@
-
 # =============================================================================
-# core/certificate.py - Certificate Generation
+# core/certificate.py - Enhanced Certificate Generation with Hidden Partition Info
 # =============================================================================
 
 import json
@@ -16,14 +15,14 @@ from reportlab.lib import colors
 import os
 
 class CertificateGenerator:
-    """Generate tamper-proof wipe certificates"""
+    """Generate tamper-proof wipe certificates with hidden partition information"""
     
-    def __init__(self):
+    def _init_(self):
         self.cert_dir = os.path.join(os.getcwd(), 'certificates')
         os.makedirs(self.cert_dir, exist_ok=True)
     
     def generate_certificate(self, wipe_data: Dict[str, Any]) -> str:
-        """Generate both PDF and JSON certificates"""
+        """Generate both PDF and JSON certificates with enhanced information"""
         cert_id = str(uuid.uuid4())
         timestamp = datetime.now().isoformat()
         
@@ -43,13 +42,16 @@ class CertificateGenerator:
                 'duration_seconds': wipe_data['duration'],
                 'total_passes': wipe_data['passes']
             },
+            'hidden_partition_analysis': wipe_data.get('hidden_partition_info', {}),
+            'mount_analysis': wipe_data.get('mount_info', {}),
             'verification': {
                 'hashes': wipe_data['verification_hashes'],
                 'certificate_hash': None  # Will be calculated
             },
             'compliance': {
                 'standard': 'NIST SP 800-88 Rev. 1' if wipe_data['method'] == 'NIST' else 'DoD 5220.22-M',
-                'verified': True
+                'verified': True,
+                'hidden_areas_wiped': self._was_hidden_areas_wiped(wipe_data.get('hidden_partition_info', {}))
             }
         }
         
@@ -69,8 +71,14 @@ class CertificateGenerator:
         
         return cert_id
     
+    def _was_hidden_areas_wiped(self, hidden_info: Dict[str, Any]) -> bool:
+        """Check if hidden areas were detected and wiped"""
+        if not hidden_info:
+            return False
+        return hidden_info.get('hpa_unlocked', False) or hidden_info.get('dco_unlocked', False)
+    
     def _generate_pdf_certificate(self, cert_data: Dict[str, Any], pdf_path: str):
-        """Generate PDF certificate"""
+        """Generate enhanced PDF certificate with hidden partition information"""
         doc = SimpleDocTemplate(pdf_path, pagesize=letter)
         styles = getSampleStyleSheet()
         story = []
@@ -109,6 +117,57 @@ class CertificateGenerator:
         story.append(device_table)
         story.append(Spacer(1, 20))
         
+        # Hidden Partition Analysis
+        hidden_info = cert_data.get('hidden_partition_analysis', {})
+        if hidden_info and (hidden_info.get('hpa_detected') or hidden_info.get('dco_detected')):
+            story.append(Paragraph("<b>Hidden Partition Analysis</b>", styles['Heading2']))
+            
+            hidden_data = []
+            if hidden_info.get('hpa_detected'):
+                status = "Detected and Unlocked" if hidden_info.get('hpa_unlocked') else "Detected but Failed to Unlock"
+                hidden_data.append(['HPA (Host Protected Area):', status])
+            
+            if hidden_info.get('dco_detected'):
+                status = "Detected and Unlocked" if hidden_info.get('dco_unlocked') else "Detected but Failed to Unlock"
+                hidden_data.append(['DCO (Device Configuration Overlay):', status])
+            
+            if hidden_info.get('hidden_sectors', 0) > 0:
+                hidden_mb = (hidden_info['hidden_sectors'] * 512) // (1024 * 1024)
+                hidden_data.append(['Hidden Space Found:', f"{hidden_mb} MB ({hidden_info['hidden_sectors']:,} sectors)"])
+            
+            if hidden_info.get('actions_taken'):
+                actions_text = "<br/>".join([f"• {action}" for action in hidden_info['actions_taken']])
+                story.append(Paragraph(f"<b>Actions Taken:</b><br/>{actions_text}", styles['Normal']))
+            
+            if hidden_data:
+                hidden_table = Table(hidden_data, colWidths=[2.5*inch, 3.5*inch])
+                hidden_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ]))
+                story.append(hidden_table)
+            
+            story.append(Spacer(1, 20))
+        
+        # Mount Analysis
+        mount_info = cert_data.get('mount_analysis', {})
+        if mount_info and (mount_info.get('unmounted_partitions') or mount_info.get('skipped_partitions')):
+            story.append(Paragraph("<b>Mount Point Analysis</b>", styles['Heading2']))
+            
+            if mount_info.get('unmounted_partitions'):
+                unmounted_text = "<br/>".join([f"• {part}" for part in mount_info['unmounted_partitions']])
+                story.append(Paragraph(f"<b>Unmounted for Wiping:</b><br/>{unmounted_text}", styles['Normal']))
+            
+            if mount_info.get('skipped_partitions'):
+                skipped_text = "<br/>".join([f"• {part}" for part in mount_info['skipped_partitions']])
+                story.append(Paragraph(f"<b>Skipped (System Drives):</b><br/>{skipped_text}", styles['Normal']))
+            
+            story.append(Spacer(1, 20))
+        
         # Wipe Details
         story.append(Paragraph("<b>Wipe Operation Details</b>", styles['Heading2']))
         wipe_data = [
@@ -117,7 +176,8 @@ class CertificateGenerator:
             ['Start Time:', cert_data['wipe_details']['start_time']],
             ['End Time:', cert_data['wipe_details']['end_time']],
             ['Duration:', f"{cert_data['wipe_details']['duration_seconds']:.2f} seconds"],
-            ['Total Passes:', str(cert_data['wipe_details']['total_passes'])]
+            ['Total Passes:', str(cert_data['wipe_details']['total_passes'])],
+            ['Hidden Areas Wiped:', 'Yes' if cert_data['compliance']['hidden_areas_wiped'] else 'N/A']
         ]
         wipe_table = Table(wipe_data, colWidths=[2*inch, 4*inch])
         wipe_table.setStyle(TableStyle([
@@ -148,13 +208,25 @@ class CertificateGenerator:
         ))
         story.append(Spacer(1, 20))
         
-        # Footer
-        footer_text = (
-            "This certificate provides cryptographic proof that the specified device "
-            "has been securely wiped according to industry standards. The certificate "
-            "hash ensures tamper detection."
+        # Compliance Statement
+        story.append(Paragraph("<b>Compliance Statement</b>", styles['Heading2']))
+        compliance_text = (
+            f"This certificate verifies that the specified device has been securely wiped "
+            f"according to {cert_data['compliance']['standard']} standards. "
         )
-        story.append(Paragraph(footer_text, styles['Normal']))
+        
+        if cert_data['compliance']['hidden_areas_wiped']:
+            compliance_text += (
+                "Hidden areas (HPA/DCO) were detected and successfully included in the wiping process, "
+                "ensuring complete data destruction across all accessible storage areas. "
+            )
+        
+        compliance_text += (
+            "The certificate hash ensures tamper detection and provides cryptographic proof "
+            "of secure erasure completion."
+        )
+        
+        story.append(Paragraph(compliance_text, styles['Normal']))
         
         doc.build(story)
     
