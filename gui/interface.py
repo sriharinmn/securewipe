@@ -638,3 +638,4 @@ Keep these certificates as legal proof of secure data destruction."""
         except Exception as e:
             self.logger.error(f"GUI error: {e}")
             messagebox.showerror("Application Error", f"Application error: {e}")
+            

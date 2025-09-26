@@ -12,8 +12,8 @@ from typing import Dict, Any, Tuple, Optional
 class HPADCOManager:
     """Manages HPA (Host Protected Area) and DCO (Device Configuration Overlay) detection and unlocking for HDDs"""
     
-    def _init_(self):
-        self.logger = logging.getLogger(_name_)
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.original_hpa_state = None
         self.original_dco_state = None
         self.device_path = None
@@ -30,6 +30,7 @@ class HPADCOManager:
             'hpa_unlocked': False,
             'dco_unlocked': False,
             'hidden_sectors': 0,
+            'hidden_details': [],  # Add list for detailed hidden area info
             'original_size': 0,
             'accessible_size': 0,
             'actions_taken': [],
@@ -46,36 +47,74 @@ class HPADCOManager:
             if hpa_info['detected']:
                 result['hpa_detected'] = True
                 result['hidden_sectors'] += hpa_info['hidden_sectors']
-                result['actions_taken'].append(f"HPA detected: {hpa_info['hidden_sectors']} hidden sectors")
+                hidden_mb = (hpa_info['hidden_sectors'] * 512) // (1024 * 1024)
                 
-                # Unlock HPA
-                if self._unlock_hpa(device_path):
-                    result['hpa_unlocked'] = True
-                    result['actions_taken'].append("HPA successfully unlocked")
-                else:
-                    result['warnings'].append("Failed to unlock HPA")
-            
+                # Add detailed HPA info
+                result['hidden_details'].append({
+                    'type': 'HPA',
+                    'sectors': hpa_info['hidden_sectors'],
+                    'size_mb': hidden_mb,
+                    'start_lba': hpa_info['current_lba'],
+                    'end_lba': hpa_info['max_lba']
+                })
+                
+                result['actions_taken'].append(
+                    f"HPA detected: {hidden_mb} MB hidden "
+                    f"(sectors {hpa_info['current_lba']} to {hpa_info['max_lba']})"
+                )
+                
+                self.logger.warning(
+                    f"⚠ HPA found: {hidden_mb} MB hidden area detected "
+                    f"(sectors {hpa_info['current_lba']} to {hpa_info['max_lba']})"
+                )
+                
             # Detect DCO
             dco_info = self._detect_dco(device_path)
             if dco_info['detected']:
                 result['dco_detected'] = True
                 result['hidden_sectors'] += dco_info['hidden_sectors']
-                result['actions_taken'].append(f"DCO detected: {dco_info['hidden_sectors']} hidden sectors")
+                hidden_mb = (dco_info['hidden_sectors'] * 512) // (1024 * 1024)
                 
-                # Unlock DCO
-                if self._unlock_dco(device_path):
-                    result['dco_unlocked'] = True
-                    result['actions_taken'].append("DCO successfully unlocked")
-                else:
-                    result['warnings'].append("Failed to unlock DCO")
+                # Add detailed DCO info
+                result['hidden_details'].append({
+                    'type': 'DCO',
+                    'sectors': dco_info['hidden_sectors'],
+                    'size_mb': hidden_mb
+                })
+                
+                result['actions_taken'].append(
+                    f"DCO detected: {hidden_mb} MB hidden"
+                )
+                
+                self.logger.warning(
+                    f"⚠ DCO found: {hidden_mb} MB hidden area detected"
+                )
+                
+            # Total hidden space summary
+            if result['hidden_sectors'] > 0:
+                total_hidden_mb = (result['hidden_sectors'] * 512) // (1024 * 1024)
+                self.logger.warning(
+                    f"⚠ Total hidden space: {total_hidden_mb} MB "
+                    f"({result['hidden_sectors']} sectors)"
+                )
+
+            # Unlock HPA
+            if result['hpa_detected'] and self._unlock_hpa(device_path):
+                result['hpa_unlocked'] = True
+                result['actions_taken'].append("HPA successfully unlocked")
+            else:
+                result['warnings'].append("Failed to unlock HPA")
+            
+            # Unlock DCO
+            if result['dco_detected'] and self._unlock_dco(device_path):
+                result['dco_unlocked'] = True
+                result['actions_taken'].append("DCO successfully unlocked")
+            else:
+                result['warnings'].append("Failed to unlock DCO")
             
             # Get size information
             size_info = self._get_device_sizes(device_path)
             result.update(size_info)
-            
-            if result['hpa_detected'] or result['dco_detected']:
-                total_hidden_mb = (result['hidden_sectors'] * 512) // (1024 * 1024)
-                result['actions_taken'].append(f"Total hidden space found: {total_hidden_mb} MB")
         
         except Exception as e:
             self.logger.error(f"Error managing HPA/DCO for {device_path}: {e}")
@@ -91,17 +130,27 @@ class HPADCOManager:
         success = True
         try:
             if self.original_hpa_state and self.original_hpa_state['was_enabled']:
-                if not self._restore_hpa(self.device_path):
-                    success = False
-                    self.logger.warning("Failed to restore original HPA state")
+                current_sectors = self.original_hpa_state['current_sectors']
+                max_sectors = self.original_hpa_state['max_sectors']
+                
+                # Only restore if there was a significant difference
+                if (max_sectors - current_sectors) > 1:
+                    if self._restore_hpa(self.device_path):
+                        self.logger.info("Successfully restored HPA state")
+                    else:
+                        success = False
+                        self.logger.warning("Failed to restore HPA state - drive may need power cycle")
+                else:
+                    self.logger.info("Skipping HPA restoration - no significant hidden area")
             
             if self.original_dco_state and self.original_dco_state['was_enabled']:
-                if not self._restore_dco(self.device_path):
+                if self._restore_dco(self.device_path):
+                    self.logger.info("Successfully restored DCO state")
+                else:
                     success = False
-                    self.logger.warning("Failed to restore original DCO state")
-        
+                    self.logger.warning("Failed to restore DCO state - drive may need power cycle")
         except Exception as e:
-            self.logger.error(f"Error restoring HPA/DCO state: {e}")
+            self.logger.error(f"Error restoring states: {e}")
             success = False
         
         return success
@@ -120,42 +169,40 @@ class HPADCOManager:
         
         try:
             if sys.platform.startswith('linux'):
-                # Use hdparm to check HPA
                 cmd = ['hdparm', '-N', device_path]
                 proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
                 if proc_result.returncode == 0:
                     output = proc_result.stdout
+                    self.logger.info(f"HPA check output: {output.strip()}")
                     
-                    # Parse hdparm output for HPA information
-                    # Example: "max sectors   = 1953525168/1953525168, HPA is disabled"
                     hpa_match = re.search(r'max sectors\s*=\s*(\d+)/(\d+)', output)
                     if hpa_match:
                         current_sectors = int(hpa_match.group(1))
                         max_sectors = int(hpa_match.group(2))
                         
-                        if max_sectors > current_sectors:
+                        # Only detect HPA if difference is more than 1 sector
+                        if max_sectors > current_sectors and (max_sectors - current_sectors) > 1:
                             result['detected'] = True
                             result['hidden_sectors'] = max_sectors - current_sectors
                             result['max_lba'] = max_sectors
                             result['current_lba'] = current_sectors
                             
-                            # Store original state
                             self.original_hpa_state = {
                                 'was_enabled': True,
                                 'current_sectors': current_sectors,
                                 'max_sectors': max_sectors
                             }
+                            self.logger.info(f"HPA detected with {result['hidden_sectors']} hidden sectors")
+                        else:
+                            self.logger.info("No significant HPA found (difference ≤ 1 sector)")
+                    else:
+                        self.logger.info("No HPA information found in output")
             
             elif sys.platform.startswith('win'):
-                # Use Windows diskpart or WMI to check for HPA
-                # This is more complex on Windows, would need specialized tools
                 self.logger.info("HPA detection on Windows requires specialized tools")
-        
-        except subprocess.TimeoutExpired:
-            self.logger.warning(f"HPA detection timed out for {device_path}")
         except Exception as e:
-            self.logger.error(f"HPA detection failed for {device_path}: {e}")
+            self.logger.error(f"HPA detection failed: {e}")
         
         return result
     
@@ -165,32 +212,52 @@ class HPADCOManager:
         
         try:
             if sys.platform.startswith('linux'):
-                # Use hdparm to check DCO
+                # First check if DCO is supported
+                cmd_check = ['hdparm', '-I', device_path]
+                check_result = subprocess.run(cmd_check, capture_output=True, text=True, timeout=30)
+                
+                self.logger.info(f"DCO support check output: {check_result.stdout.strip()}")
+                
+                if 'DCO is' not in check_result.stdout:
+                    self.logger.info("DCO is not supported on this device")
+                    return result
+                
+                # Check DCO status
                 cmd = ['hdparm', '--dco-identify', device_path]
                 proc_result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
                 if proc_result.returncode == 0:
                     output = proc_result.stdout
+                    self.logger.info(f"DCO check output: {output.strip()}")
                     
-                    # Check if DCO is active
+                    if 'DCO is frozen' in output:
+                        self.logger.info("DCO is frozen - cannot modify")
+                        return result
+                    
+                    if 'DCO is not supported' in output:
+                        self.logger.info("DCO is not supported")
+                        return result
+                        
                     if 'DCO' in output and 'enabled' in output.lower():
-                        # Parse for sector information
                         sector_match = re.search(r'(\d+)\s+sectors', output)
                         if sector_match:
                             hidden_sectors = int(sector_match.group(1))
-                            result['detected'] = True
-                            result['hidden_sectors'] = hidden_sectors
-                            
-                            # Store original state
-                            self.original_dco_state = {
-                                'was_enabled': True,
-                                'hidden_sectors': hidden_sectors
-                            }
-        
-        except subprocess.TimeoutExpired:
-            self.logger.warning(f"DCO detection timed out for {device_path}")
+                            if hidden_sectors > 0:
+                                result['detected'] = True
+                                result['hidden_sectors'] = hidden_sectors
+                                self.original_dco_state = {
+                                    'was_enabled': True,
+                                    'hidden_sectors': hidden_sectors
+                                }
+                                self.logger.info(f"DCO detected with {hidden_sectors} hidden sectors")
+                            else:
+                                self.logger.info("DCO present but no hidden sectors")
+                    else:
+                        self.logger.info("No active DCO configuration found")
+                else:
+                    self.logger.warning(f"DCO identification failed: {proc_result.stderr}")
         except Exception as e:
-            self.logger.error(f"DCO detection failed for {device_path}: {e}")
+            self.logger.error(f"DCO detection failed: {e}")
         
         return result
     

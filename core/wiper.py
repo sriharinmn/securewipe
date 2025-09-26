@@ -8,15 +8,13 @@ import random
 import hashlib
 import time
 import logging
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, Any
 from datetime import datetime
 from .hpa_dco_manager import HPADCOManager
 from .mount_manager import MountManager
 import logging
 
 class DataWiper:
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
     """Enhanced core data wiping engine with HPA/DCO and mounting support"""
     
     # NIST SP 800-88 Rev. 1 compliant patterns
@@ -34,8 +32,8 @@ class DataWiper:
         None,     # Pass 3: Random data
     ]
     
-    def _init_(self):
-        self.logger = logging.getLogger(_name_)
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
         self.block_size = 64 * 1024  # 64KB blocks for performance
         self.hpa_dco_manager = HPADCOManager()
         self.mount_manager = MountManager()
@@ -64,10 +62,39 @@ class DataWiper:
             
             if hidden_partition_info['hpa_detected'] or hidden_partition_info['dco_detected']:
                 hidden_mb = (hidden_partition_info['hidden_sectors'] * 512) // (1024 * 1024)
-                self.logger.info(f"Hidden partitions detected: {hidden_mb} MB")
+                
+                # Show detailed hidden area information
+                for hidden_area in hidden_partition_info.get('hidden_details', []):
+                    area_type = hidden_area['type']
+                    size_mb = hidden_area.get('size_mb', 0)
+                    sectors = hidden_area.get('sectors', 0)
+                    
+                    if area_type == 'HPA':
+                        start_lba = hidden_area.get('start_lba', 0)
+                        end_lba = hidden_area.get('end_lba', 0)
+                        self.logger.warning(
+                            f"⚠ Found HPA: {size_mb} MB ({sectors} sectors) "
+                            f"from LBA {start_lba} to {end_lba}"
+                        )
+                    else:  # DCO
+                        self.logger.warning(
+                            f"⚠ Found DCO: {size_mb} MB ({sectors} sectors)"
+                        )
+                
+                self.logger.warning(f"⚠ Total hidden space: {hidden_mb} MB will be wiped")
+                
                 if progress_callback:
-                    progress_callback(8, f"Found {hidden_mb} MB hidden partitions - unlocked for wiping")
-            
+                    # Show detailed message in progress
+                    details = [
+                        f"{area['type']}: {area['size_mb']} MB"
+                        for area in hidden_partition_info.get('hidden_details', [])
+                    ]
+                    details_str = ", ".join(details)
+                    progress_callback(8, 
+                        f"Found {hidden_mb} MB hidden partitions "
+                        f"({details_str}) - unlocked for wiping"
+                    )
+
             # Step 2: Unmount any mounted partitions
             if progress_callback:
                 progress_callback(10, "Unmounting external drives...")
@@ -194,6 +221,23 @@ class DataWiper:
         
         self.logger.info(f"Wipe completed successfully. Certificate ID: {cert_id}")
         return cert_id
+    
+    def check_hidden_partitions(self, device_path: str) -> Dict[str, Any]:
+        """Check for hidden partitions without unlocking them"""
+        try:
+            if not os.path.exists(device_path):
+                return {'error': f"Device {device_path} does not exist"}
+
+            hidden_info = self.hpa_dco_manager.detect_and_unlock_hidden_areas(device_path)
+            
+            # Restore original state immediately since we're just checking
+            self.hpa_dco_manager.restore_original_state()
+            
+            return hidden_info
+            
+        except Exception as e:
+            self.logger.error(f"Hidden partition check failed: {e}")
+            return {'error': str(e)}
     
     def _get_device_size(self, device_path: str) -> int:
         """Get device size in bytes"""

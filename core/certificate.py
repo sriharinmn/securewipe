@@ -17,7 +17,7 @@ import os
 class CertificateGenerator:
     """Generate tamper-proof wipe certificates with hidden partition information"""
     
-    def _init_(self):
+    def __init__(self):
         self.cert_dir = os.path.join(os.getcwd(), 'certificates')
         os.makedirs(self.cert_dir, exist_ok=True)
     
