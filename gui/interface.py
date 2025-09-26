@@ -143,18 +143,10 @@ class SecureWiperGUI:
         header_content = tk.Frame(header_frame, bg=self.colors['primary'])
         header_content.pack(fill="both", expand=True, padx=15, pady=10)
         
-        # Header icon and title
-        header_icon = tk.Label(header_content, text="🔒", bg=self.colors['primary'], 
-                              fg='white', font=('Segoe UI', 12))
-        header_icon.pack(side="left", padx=(0, 10))
-        
-        header_title = tk.Label(header_content, text="Secure Data Wiper v3.2.1 - Government Edition", 
+        # Professional header title
+        header_title = tk.Label(header_content, text="Secure Data Wiper v2.0 - NIST SP 800-88 Rev. 1 Compliant", 
                                bg=self.colors['primary'], fg='white', font=('Segoe UI', 12, 'bold'))
         header_title.pack(side="left")
-        
-        header_subtitle = tk.Label(header_content, text="Destroy all data! No possibility to recover.", 
-                                  bg=self.colors['primary'], fg='white', font=('Segoe UI', 10))
-        header_subtitle.pack(side="left", padx=(20, 0))
         
         # Main content area
         main_frame = ttk.Frame(self.root, padding="20")
@@ -167,90 +159,92 @@ class SecureWiperGUI:
         right_column = ttk.Frame(main_frame, padding="10")
         right_column.pack(side="right", fill="y", padx=(10, 0))
         
-        # LEFT COLUMN - Method and Security sections (like Macrorit)
+        # LEFT COLUMN - Professional method selection
         
-        # 1. Wiping Method section
-        method_frame = ttk.LabelFrame(left_column, text="1. Wiping Method", 
+        # Wiping Method Selection
+        method_frame = ttk.LabelFrame(left_column, text="Wiping Method Selection", 
                                     padding="15", style="Section.TLabelframe")
         method_frame.pack(fill="x", pady=(0, 10))
         
-        self.method_var = tk.StringVar(value="free_space")
+        ttk.Label(method_frame, text="Available Methods:", font=('Segoe UI', 10)).pack(anchor="w", pady=(0, 5))
         
-        ttk.Radiobutton(method_frame, text="Free space only", 
-                       variable=self.method_var, value="free_space",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
+        self.method_var = tk.StringVar(value="auto")
         
-        ttk.Radiobutton(method_frame, text="Entire Drive", 
-                       variable=self.method_var, value="entire_drive",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
+        # Method options with professional descriptions
+        self.auto_radio = ttk.Radiobutton(method_frame, text="Auto-Select (Recommended)", 
+                                        variable=self.method_var, value="auto",
+                                        command=self.update_method_description,
+                                        style="Section.TRadiobutton")
+        self.auto_radio.pack(anchor="w", pady=2, padx=10)
         
-        # Note under method selection
-        method_note = ttk.Label(method_frame, text="(All data will be erased)", 
-                               font=('Segoe UI', 9), foreground=self.colors['text_secondary'])
-        method_note.pack(anchor="w", pady=(5, 0))
+        self.crypto_radio = ttk.Radiobutton(method_frame, text="Cryptographic Erasure (SSD Only)", 
+                                          variable=self.method_var, value="crypto_erase",
+                                          command=self.update_method_description,
+                                          style="Section.TRadiobutton")
+        self.crypto_radio.pack(anchor="w", pady=2, padx=10)
         
-        # 2. Security section
-        security_frame = ttk.LabelFrame(left_column, text="2. Security", 
-                                      padding="15", style="Section.TLabelframe")
-        security_frame.pack(fill="x", pady=(0, 10))
+        self.secure_radio = ttk.Radiobutton(method_frame, text="ATA/NVMe Secure Erase (SSD Only)", 
+                                          variable=self.method_var, value="secure_erase",
+                                          command=self.update_method_description,
+                                          style="Section.TRadiobutton")
+        self.secure_radio.pack(anchor="w", pady=2, padx=10)
         
-        self.security_var = tk.StringVar(value="fill_zero")
+        self.nist_radio = ttk.Radiobutton(method_frame, text="NIST SP 800-88 Overwrite (All Drives)", 
+                                        variable=self.method_var, value="nist",
+                                        command=self.update_method_description,
+                                        style="Section.TRadiobutton")
+        self.nist_radio.pack(anchor="w", pady=2, padx=10)
         
-        ttk.Radiobutton(security_frame, text="Fill sectors with zero", 
-                       variable=self.security_var, value="fill_zero",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
+        self.dod_radio = ttk.Radiobutton(method_frame, text="DoD 5220.22-M Overwrite (All Drives)", 
+                                       variable=self.method_var, value="dod",
+                                       command=self.update_method_description,
+                                       style="Section.TRadiobutton")
+        self.dod_radio.pack(anchor="w", pady=2, padx=10)
         
-        ttk.Radiobutton(security_frame, text="Fill sectors with one", 
-                       variable=self.security_var, value="fill_one",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
+        # Method description
+        desc_frame = ttk.Frame(method_frame)
+        desc_frame.pack(fill="x", pady=(10, 0))
         
-        ttk.Radiobutton(security_frame, text="Fill sectors with zero&one", 
-                       variable=self.security_var, value="fill_zero_one",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
+        self.method_desc_label = ttk.Label(desc_frame, text="", wraplength=400, 
+                                         font=('Segoe UI', 9), foreground=self.colors['text_secondary'])
+        self.method_desc_label.pack(fill="x", padx=10, pady=5)
         
-        security_options_frame = ttk.Frame(security_frame)
-        security_options_frame.pack(fill="x", pady=(10, 0))
-        
-        ttk.Radiobutton(security_options_frame, text="DoD 5220-22-M (3 passes)", 
-                       variable=self.security_var, value="dod_3_pass",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
-        
-        ttk.Radiobutton(security_options_frame, text="DoD 5220-22 STD (7 passes)", 
-                       variable=self.security_var, value="dod_7_pass",
-                       style="Section.TRadiobutton").pack(anchor="w", pady=2)
-        
-        # 3. Device selection section
-        device_frame = ttk.LabelFrame(left_column, text="3. Choose a partition or disk to wipe", 
+        # Device Selection Section
+        device_frame = ttk.LabelFrame(left_column, text="Device Selection", 
                                     padding="15", style="Section.TLabelframe")
-        device_frame.pack(fill="both", expand=True, pady=(0, 10))
+        device_frame.pack(fill="x", pady=(0, 10))
+        device_frame.columnconfigure(1, weight=1)
         
-        # Device list with visual representation
-        self.device_listbox = tk.Listbox(device_frame, height=8, font=('Segoe UI', 10),
-                                       bg='white', 
-                                       selectbackground='#4299e1',
-                                       borderwidth=1, relief='solid')
-        self.device_listbox.pack(fill="both", expand=True, pady=(0, 10))
+        ttk.Label(device_frame, text="Select Device:", font=('Segoe UI', 10)).grid(row=0, column=0, sticky=tk.W, pady=5)
         
-        # Device status indicators (like Macrorit's colored bars)
-        status_frame = ttk.Frame(device_frame)
-        status_frame.pack(fill="x", pady=(10, 0))
+        self.device_var = tk.StringVar()
+        self.device_combo = ttk.Combobox(device_frame, textvariable=self.device_var, 
+                                       state="readonly", width=50, font=('Segoe UI', 10))
+        self.device_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5, padx=(5, 0))
         
-        # Status legend
-        legend_frame = ttk.Frame(status_frame)
-        legend_frame.pack(anchor="w")
+        refresh_btn = ttk.Button(device_frame, text="Refresh Devices", 
+                               command=self.refresh_devices, style="NeutralButton.TButton")
+        refresh_btn.grid(row=0, column=2, pady=5, padx=(5, 0))
         
-        # Create colored status indicators
-        primary_color = tk.Frame(legend_frame, bg=self.colors['accent'], width=15, height=15)
-        primary_color.pack(side="left", padx=(0, 5))
-        ttk.Label(legend_frame, text="Primary", font=('Segoe UI', 9)).pack(side="left", padx=(0, 15))
+        # Device type indicator
+        self.device_type_label = ttk.Label(device_frame, text="", font=('Segoe UI', 10, 'bold'))
+        self.device_type_label.grid(row=1, column=1, sticky=tk.W, pady=(5, 0), padx=(5, 0))
         
-        logical_color = tk.Frame(legend_frame, bg=self.colors['warning'], width=15, height=15)
-        logical_color.pack(side="left", padx=(0, 5))
-        ttk.Label(legend_frame, text="Logical", font=('Segoe UI', 9)).pack(side="left", padx=(0, 15))
+        # Device Information Display
+        info_frame = ttk.LabelFrame(left_column, text="Device Information", 
+                                  padding="15", style="Section.TLabelframe")
+        info_frame.pack(fill="both", expand=True, pady=(0, 10))
         
-        unallocated_color = tk.Frame(legend_frame, bg=self.colors['text_secondary'], width=15, height=15)
-        unallocated_color.pack(side="left", padx=(0, 5))
-        ttk.Label(legend_frame, text="Unallocated", font=('Segoe UI', 9)).pack(side="left")
+        # Create text widget for device info
+        self.info_text = tk.Text(info_frame, height=8, state=tk.DISABLED, wrap=tk.WORD,
+                                font=('Consolas', 9), bg=self.colors['surface'], 
+                                fg=self.colors['text'], borderwidth=1, relief='solid')
+        
+        info_scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.info_text.yview)
+        self.info_text.configure(yscrollcommand=info_scrollbar.set)
+        
+        self.info_text.pack(side="left", fill="both", expand=True)
+        info_scrollbar.pack(side="right", fill="y")
         
         # RIGHT COLUMN - Action button and status
         
@@ -258,13 +252,13 @@ class SecureWiperGUI:
         action_frame = ttk.Frame(right_column, padding="20")
         action_frame.pack(pady=(50, 20))
         
-        # Wipe button with icon
-        self.wipe_btn = tk.Button(action_frame, text="🔥 Wipe Now", 
-                                font=('Segoe UI', 14, 'bold'),
+        # Professional wipe button
+        self.wipe_btn = tk.Button(action_frame, text="Start Secure Wipe", 
+                                font=('Segoe UI', 12, 'bold'),
                                 bg=self.colors['accent'], fg='white',
                                 activebackground=self.colors['primary'],
                                 activeforeground='white',
-                                borderwidth=0, relief='flat',
+                                borderwidth=1, relief='solid',
                                 padx=30, pady=15,
                                 cursor='hand2',
                                 command=self.start_wipe)
@@ -274,23 +268,23 @@ class SecureWiperGUI:
         menu_frame = ttk.Frame(right_column)
         menu_frame.pack(pady=(20, 0))
         
-        ttk.Button(menu_frame, text="🔄 Reload disks", 
+        ttk.Button(menu_frame, text="Refresh Devices", 
                  command=self.refresh_devices, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        ttk.Button(menu_frame, text="🛠️ More tools", 
-                 command=self.show_more_tools, style="NeutralButton.TButton").pack(pady=2, fill="x")
+        ttk.Button(menu_frame, text="Verify Certificate", 
+                 command=self.verify_certificate, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        ttk.Button(menu_frame, text="❓ Help topics", 
+        ttk.Button(menu_frame, text="Help Topics", 
                  command=self.show_help_dialog, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        ttk.Button(menu_frame, text="ℹ️ About", 
+        ttk.Button(menu_frame, text="About", 
                  command=self.show_about, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        ttk.Button(menu_frame, text="🔐 Activate", 
-                 command=self.show_activation, style="NeutralButton.TButton").pack(pady=2, fill="x")
+        ttk.Button(menu_frame, text="Create Test Files", 
+                 command=self.create_test_files, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        ttk.Button(menu_frame, text="⬆️ Upgrade", 
-                 command=self.show_upgrade, style="NeutralButton.TButton").pack(pady=2, fill="x")
+        ttk.Button(menu_frame, text="Exit Application", 
+                 command=self.root.quit, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
         # Status bar at bottom (like Macrorit) using tk widgets
         status_frame = tk.Frame(self.root, bg=self.colors['primary'], height=40)
@@ -315,9 +309,7 @@ class SecureWiperGUI:
         self.selected_device = None
         
         # Bind events
-        self.device_listbox.bind('<<ListboxSelect>>', self.on_device_selected)
-        self.method_var.trace('w', self.on_method_changed)
-        self.security_var.trace('w', self.on_security_changed)
+        self.device_combo.bind('<<ComboboxSelected>>', self.on_device_selected)
         
         # Load initial data
         self.refresh_devices()
@@ -446,95 +438,234 @@ Features:
         else:
             self.progress_label.config(text="We strongly recommend you to close all other applications before you perform operation.")
     
-    def on_security_changed(self, *args):
-        """Handle security method change"""
-        # Update UI based on security selection
-        pass
+    def update_method_options(self, device):
+        """Enable/disable method options based on device capabilities"""
+        is_ssd = device.get('is_ssd', False)
+        supports_crypto = device.get('supports_crypto_erase', False)
+        supports_secure = device.get('supports_secure_erase', False)
+        
+        if is_ssd:
+            # Enable SSD-specific methods
+            self.crypto_radio.config(state=tk.NORMAL if supports_crypto else tk.DISABLED)
+            self.secure_radio.config(state=tk.NORMAL if supports_secure else tk.DISABLED)
+        else:
+            # Disable SSD-specific methods for HDDs
+            self.crypto_radio.config(state=tk.DISABLED)
+            self.secure_radio.config(state=tk.DISABLED)
+            
+            # Auto-select NIST for HDDs if crypto/secure was selected
+            if self.method_var.get() in ['crypto_erase', 'secure_erase']:
+                self.method_var.set('nist')
+    
+    def update_device_info(self, device):
+        """Update device information display with SSD capabilities"""
+        self.info_text.config(state=tk.NORMAL)
+        self.info_text.delete(1.0, tk.END)
+        
+        is_ssd = device.get('is_ssd', False)
+        is_nvme = device.get('is_nvme', False)
+        
+        info_text = f"""DEVICE INFORMATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Device Path: {device['path']}
+Device Name: {device['name']}
+Model: {device['model']}
+Size: {device['size']}
+Type: {device.get('type', 'Unknown')}
+Mounted: {'Yes' if device.get('mounted', False) else 'No'}
+
+STORAGE TECHNOLOGY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Storage Type: {'SSD (Solid State Drive)' if is_ssd else 'HDD (Hard Disk Drive)'}
+Interface: {'NVMe' if is_nvme else ('SATA SSD' if is_ssd else 'SATA/IDE')}
+
+CAPABILITIES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
+        if is_ssd:
+            info_text += f"""
+Cryptographic Erasure: {'✓ Supported' if device.get('supports_crypto_erase', False) else '✗ Not Available'}
+Secure Erase: {'✓ Supported' if device.get('supports_secure_erase', False) else '✗ Not Available'}
+Recommended Method: {device.get('recommended_method', 'nist').upper()}
+
+SSD ADVANTAGES:
+• Cryptographic erasure can instantly destroy encryption keys
+• Secure erase reaches all storage areas including spare blocks
+• Traditional overwrite may not reach all NAND cells due to wear leveling
+"""
+        else:
+            info_text += """
+This is a traditional hard disk drive (HDD).
+• Uses magnetic storage technology
+• Data stored on spinning platters
+• Overwrite methods are highly effective
+• Recommended: NIST SP 800-88 or DoD 5220.22-M
+"""
+
+        method_display = {
+            'auto': 'Automatic (Recommended)',
+            'crypto_erase': 'Cryptographic Erasure',
+            'secure_erase': 'ATA/NVMe Secure Erase', 
+            'nist': 'NIST SP 800-88',
+            'dod': 'DoD 5220.22-M'
+        }.get(self.method_var.get(), self.method_var.get().upper())
+
+        info_text += f"""
+
+SELECTED METHOD: {method_display}
+
+⚠️  IMPORTANT WARNINGS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔴 This operation will PERMANENTLY DESTROY all data
+🔴 Data recovery will be impossible after completion
+🔴 Ensure you have backups of important data
+🔴 Verify correct device selection - mistakes cannot be undone
+🔴 Process may take several hours depending on size and method
+
+COMPLIANCE STANDARDS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• NIST SP 800-88 Rev. 1: Guidelines for Media Sanitization
+• DoD 5220.22-M: Department of Defense standard
+• Common Criteria Protection Profiles
+• Federal Information Processing Standards (FIPS)
+"""
+        
+        self.info_text.insert(1.0, info_text)
+        self.info_text.config(state=tk.DISABLED)
+    
+    def update_method_description(self):
+        """Update method description based on selected method and device"""
+        if not self.selected_device:
+            return
+            
+        method = self.method_var.get()
+        is_ssd = self.selected_device.get('is_ssd', False)
+        
+        descriptions = {
+            'auto': f"Automatically selects the best method for your {'SSD' if is_ssd else 'HDD'}. " +
+                   f"{'Advanced methods for SSDs, proven overwrite for HDDs' if is_ssd else 'NIST SP 800-88 overwrite for HDDs'}.",
+            
+            'crypto_erase': "Cryptographic Erasure: Destroys encryption keys, making data instantly unrecoverable. " +
+                           "Fastest and most secure method for SSDs. NIST compliant.",
+            
+            'secure_erase': "ATA/NVMe Secure Erase: Hardware-level command that erases all user data including " +
+                           "spare blocks and remapped sectors. NIST compliant.",
+            
+            'nist': "NIST SP 800-88 Overwrite: Single pass with verification. " +
+                   "Suitable for HDDs and SSDs. Government standard.",
+            
+            'dod': "DoD 5220.22-M: Three-pass overwrite (zeros, ones, random). " +
+                  "Military standard method. Works on all drive types."
+        }
+        
+        desc = descriptions.get(method, "")
+        
+        # Add warnings for inappropriate method selections
+        if method in ['crypto_erase', 'secure_erase'] and not is_ssd:
+            desc += "\n⚠️ This method is only available for SSDs. Please select a different method."
+        elif method == 'auto':
+            recommended = self.selected_device.get('recommended_method', 'nist')
+            desc += f"\n→ Auto-selected method: {recommended.upper()}"
+        
+        self.method_desc_label.config(text=desc)
     
     def refresh_devices(self):
-        """Refresh the list of available devices in Macrorit style"""
+        """Refresh the list of available devices with SSD detection"""
         try:
-            # Clear existing devices
-            self.device_listbox.delete(0, tk.END)
+            devices = self.detector.get_all_devices()
+            device_list = []
             self.device_data = {}
             
-            devices = self.detector.get_all_devices()
-            
             if not devices:
-                # Add mock devices for demonstration
+                # Add mock devices for demonstration if detector fails
                 devices = [
                     {
                         'name': 'Disk1',
                         'path': '/dev/disk1',
-                        'model': 'Basic GPT',
+                        'model': 'Sample HDD Drive',
                         'size': '931.5 GB',
                         'type': 'HDD',
                         'is_ssd': False,
-                        'partitions': [
-                            {'name': 'EFI', 'size': '500.0 MB', 'used': '10%'},
-                            {'name': 'DIAGS', 'size': '40.00 MB', 'used': '0%'},
-                            {'name': 'GPT Recovery', 'size': '128.0 MB', 'used': '39%'},
-                            {'name': 'OS', 'size': '750.0 MB', 'used': '33%'},
-                            {'name': 'GPT Partition', 'size': '922.2 GB', 'used': '57%'},
-                            {'name': 'GPT Partition Recovery', 'size': '7.956 GB', 'used': '91%'}
-                        ]
+                        'mounted': False
                     },
                     {
-                        'name': 'Disk6', 
-                        'path': '/dev/disk6',
-                        'model': 'GPT Recovery',
-                        'size': '1.365 TB',
+                        'name': 'Disk2', 
+                        'path': '/dev/disk2',
+                        'model': 'Sample SSD Drive',
+                        'size': '256 GB',
                         'type': 'SSD',
                         'is_ssd': True,
-                        'partitions': [
-                            {'name': 'Seagate', 'size': '1.364 TB', 'used': '7%'}
-                        ]
+                        'is_nvme': True,
+                        'mounted': False
                     }
                 ]
             
-            for i, device in enumerate(devices):
-                # Create device entry similar to Macrorit
-                device_info = f"{device['name']} - {device['model']} ({device['size']})"
-                self.device_listbox.insert(tk.END, device_info)
-                self.device_data[i] = device
+            for device in devices:
+                # Enhanced display name with SSD/HDD indicator
+                device_type = "SSD" if device.get('is_ssd', False) else "HDD"
+                nvme_indicator = " (NVMe)" if device.get('is_nvme', False) else ""
+                
+                display_name = f"{device['name']} - {device['model']} ({device['size']}) [{device_type}{nvme_indicator}]"
+                device_list.append(display_name)
+                self.device_data[display_name] = device
             
-            # Select first device by default
-            if devices:
-                self.device_listbox.selection_set(0)
+            self.device_combo['values'] = device_list
+            if device_list:
+                self.device_combo.current(0)
                 self.on_device_selected(None)
+            else:
+                self.info_text.config(state=tk.NORMAL)
+                self.info_text.delete(1.0, tk.END)
+                self.info_text.insert(1.0, "No devices found. Try creating test files or running as administrator.")
+                self.info_text.config(state=tk.DISABLED)
         
         except Exception as e:
             self.logger.error(f"Failed to refresh devices: {e}")
             messagebox.showerror("Error", f"Failed to detect devices: {e}")
     
     def on_device_selected(self, event):
-        """Handle device selection in the listbox"""
-        selection = self.device_listbox.curselection()
-        if selection:
-            index = selection[0]
-            if index in self.device_data:
-                device = self.device_data[index]
-                self.selected_device = device
-                
-                # Update status message
-                is_ssd = device.get('is_ssd', False)
-                device_type = "SSD" if is_ssd else "HDD"
-                self.progress_label.config(
-                    text=f"Selected: {device['name']} ({device_type}) - {device['size']}"
-                )
-                
-                # Enable wipe button
+        """Handle device selection with enhanced SSD information"""
+        selected = self.device_var.get()
+        if selected in self.device_data:
+            device = self.device_data[selected]
+            self.selected_device = device
+            
+            is_ssd = device.get('is_ssd', False)
+            is_nvme = device.get('is_nvme', False)
+            
+            # Update device type indicator
+            if is_ssd:
+                device_type_text = f"{'NVMe SSD' if is_nvme else 'SATA SSD'} - Advanced methods available"
+                self.device_type_label.config(text=device_type_text, foreground=self.colors['accent'])
+            else:
+                device_type_text = "HDD - Traditional overwrite methods"
+                self.device_type_label.config(text=device_type_text, foreground=self.colors['text'])
+            
+            # Enable/disable method options based on device type
+            self.update_method_options(device)
+            
+            # Update device info display
+            self.update_device_info(device)
+            
+            # Update method description
+            self.update_method_description()
+            
+            # Check if device is safe to wipe
+            try:
+                safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
+                if not safe:
+                    self.wipe_btn.config(state=tk.DISABLED)
+                    messagebox.showwarning("Device Warning", f"Cannot wipe this device: {reason}")
+                else:
+                    self.wipe_btn.config(state=tk.NORMAL)
+            except:
+                # If detector fails, assume it's safe for demo
                 self.wipe_btn.config(state=tk.NORMAL)
-                
-                # Check if device is safe to wipe
-                try:
-                    safe, reason = self.detector.is_device_safe_to_wipe(device['path'])
-                    if not safe:
-                        self.wipe_btn.config(state=tk.DISABLED)
-                        self.progress_label.config(text=f"Warning: {reason}")
-                except:
-                    # If detector fails, assume it's safe for demo
-                    pass
     
     def update_method_options(self, device):
         """Enable/disable method options based on device capabilities"""
@@ -862,7 +993,14 @@ Keep these certificates as legal proof of secure data destruction."""
     def _enable_ui(self):
         """Re-enable UI controls after wipe operation"""
         self.wipe_btn.config(state=tk.NORMAL)
-        self.device_listbox.config(state=tk.NORMAL)
+        self.device_combo.config(state="readonly")
+        
+        # Re-enable appropriate radio buttons
+        if self.selected_device:
+            self.update_method_options(self.selected_device)
+        
+        for radio in [self.auto_radio, self.nist_radio, self.dod_radio]:
+            radio.config(state=tk.NORMAL)
     
     def verify_certificate(self):
         """Verify a certificate file"""
