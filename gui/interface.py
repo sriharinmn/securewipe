@@ -35,8 +35,8 @@ class SecureWiperGUI:
             'section_bg': '#edf2f7'     # Section background
         }
         
-        # Configure root window background
-        self.root.configure(bg=self.colors['background'])
+        # Configure root window
+        self.root.configure()
         
         self.detector = DeviceDetector()
         self.wiper = DataWiper()
@@ -113,18 +113,17 @@ class SecureWiperGUI:
         style = ttk.Style()
         style.theme_use('clam')
         
-        # Header and title styles
-        style.configure("Header.TFrame", background=self.colors['primary'])
-        style.configure("Header.TLabel", foreground='white', 
-                       font=('Segoe UI', 14, 'bold'), background=self.colors['primary'])
-        style.configure("HeaderIcon.TLabel", foreground='white', 
-                       font=('Segoe UI', 12), background=self.colors['primary'])
+        # Configure basic styles without problematic background settings
+        style.configure("Header.TFrame", relief='flat')
+        style.configure("Header.TLabel", foreground=self.colors['primary'], 
+                       font=('Segoe UI', 14, 'bold'))
+        style.configure("HeaderIcon.TLabel", foreground=self.colors['primary'], 
+                       font=('Segoe UI', 12))
         
-        # Section styles similar to Macrorit
-        style.configure("Section.TLabelframe", background=self.colors['surface'], 
-                       borderwidth=1, relief='solid', bordercolor=self.colors['border'])
+        # Section styles 
+        style.configure("Section.TLabelframe", borderwidth=1, relief='solid')
         style.configure("Section.TLabelframe.Label", font=('Segoe UI', 10, 'bold'), 
-                       foreground=self.colors['text'], background=self.colors['surface'])
+                       foreground=self.colors['text'])
         
         # Button styles
         style.configure("ActionButton.TButton", font=('Segoe UI', 12, 'bold'),
@@ -133,28 +132,33 @@ class SecureWiperGUI:
         
         # Radio button styles
         style.configure("Section.TRadiobutton", font=('Segoe UI', 10),
-                       foreground=self.colors['text'], background=self.colors['surface'])
+                       foreground=self.colors['text'])
         
-        # Create header bar similar to Macrorit
-        header_frame = ttk.Frame(self.root, style="Header.TFrame", padding="15")
+        # Create header bar similar to Macrorit using tk widgets
+        header_frame = tk.Frame(self.root, bg=self.colors['primary'], height=50)
         header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+        
+        # Header content frame
+        header_content = tk.Frame(header_frame, bg=self.colors['primary'])
+        header_content.pack(fill="both", expand=True, padx=15, pady=10)
         
         # Header icon and title
-        header_icon = ttk.Label(header_frame, text="🔒", style="HeaderIcon.TLabel")
+        header_icon = tk.Label(header_content, text="🔒", bg=self.colors['primary'], 
+                              fg='white', font=('Segoe UI', 12))
         header_icon.pack(side="left", padx=(0, 10))
         
-        header_title = ttk.Label(header_frame, text="Secure Data Wiper v3.2.1 - Government Edition", 
-                                style="Header.TLabel")
+        header_title = tk.Label(header_content, text="Secure Data Wiper v3.2.1 - Government Edition", 
+                               bg=self.colors['primary'], fg='white', font=('Segoe UI', 12, 'bold'))
         header_title.pack(side="left")
         
-        header_subtitle = ttk.Label(header_frame, text="Destroy all data! No possibility to recover.", 
-                                   style="HeaderIcon.TLabel")
+        header_subtitle = tk.Label(header_content, text="Destroy all data! No possibility to recover.", 
+                                  bg=self.colors['primary'], fg='white', font=('Segoe UI', 10))
         header_subtitle.pack(side="left", padx=(20, 0))
         
         # Main content area
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(fill="both", expand=True)
-        main_frame.configure(bg=self.colors['background'])
         
         # Create left and right columns like Macrorit
         left_column = ttk.Frame(main_frame, padding="10")
@@ -222,8 +226,8 @@ class SecureWiperGUI:
         
         # Device list with visual representation
         self.device_listbox = tk.Listbox(device_frame, height=8, font=('Segoe UI', 10),
-                                       bg=self.colors['surface'], 
-                                       selectbackground=self.colors['accent'],
+                                       bg='white', 
+                                       selectbackground='#4299e1',
                                        borderwidth=1, relief='solid')
         self.device_listbox.pack(fill="both", expand=True, pady=(0, 10))
         
@@ -288,17 +292,22 @@ class SecureWiperGUI:
         ttk.Button(menu_frame, text="⬆️ Upgrade", 
                  command=self.show_upgrade, style="NeutralButton.TButton").pack(pady=2, fill="x")
         
-        # Status bar at bottom (like Macrorit)
-        status_frame = ttk.Frame(self.root, padding="10")
+        # Status bar at bottom (like Macrorit) using tk widgets
+        status_frame = tk.Frame(self.root, bg=self.colors['primary'], height=40)
         status_frame.pack(fill="x", side="bottom")
-        status_frame.configure(style="Header.TFrame")
+        status_frame.pack_propagate(False)
+        
+        # Status content frame
+        status_content = tk.Frame(status_frame, bg=self.colors['primary'])
+        status_content.pack(fill="both", expand=True, padx=15, pady=10)
         
         # Progress bar and status
-        self.progress = ttk.Progressbar(status_frame, length=400, mode='determinate')
+        self.progress = ttk.Progressbar(status_content, length=300, mode='determinate')
         self.progress.pack(side="left", padx=(0, 10))
         
-        self.progress_label = ttk.Label(status_frame, text="We strongly recommend you to close all other applications before you perform operation.",
-                                      style="HeaderIcon.TLabel")
+        self.progress_label = tk.Label(status_content, 
+                                     text="We strongly recommend you to close all other applications before you perform operation.",
+                                     bg=self.colors['primary'], fg='white', font=('Segoe UI', 10))
         self.progress_label.pack(side="left")
         
         # Initialize device list
@@ -327,10 +336,10 @@ class SecureWiperGUI:
                     tooltip = tk.Toplevel()
                     tooltip.wm_overrideredirect(True)
                     tooltip.wm_geometry(f"+{event.x_root+10}+{event.y_root+10}")
-                    tooltip.configure(bg=self.colors['text'], relief='solid', borderwidth=1)
+                    tooltip.configure(bg='#2d3748', relief='solid', borderwidth=1)
                     
                     label = tk.Label(tooltip, text=text, font=('Segoe UI', 9),
-                                   bg=self.colors['text'], fg=self.colors['surface'], 
+                                   bg='#2d3748', fg='white', 
                                    wraplength=300, justify='left', padx=5, pady=3)
                     label.pack()
                     
